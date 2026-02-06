@@ -132,6 +132,14 @@ ${nearbyAgentLines}
 
 NEARBY RESOURCES:
 ${resourceLines}
+
+NEARBY BUILDINGS:
+${nearbyBuildings.length > 0 ? nearbyBuildings.map((b) => `- ${b.type} at (${b.posX}, ${b.posY})`).join("\n") : "No buildings nearby."}
+
+YOUR INVENTORY:
+${inventory.length > 0 ? inventory.map((i) => `- ${i.quantity} ${i.itemType}`).join("\n") : "Empty."}
+
+WEATHER: ${weather}
 ${convSection}
 YOUR MEMORIES (most relevant first):
 ${memoryLines || "No memories yet."}

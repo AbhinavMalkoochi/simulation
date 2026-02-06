@@ -10,21 +10,45 @@ interface Agent {
   energy: number;
 }
 
+interface Resource {
+  _id: string;
+  tileX: number;
+  tileY: number;
+  type: string;
+  quantity: number;
+}
+
+interface Building {
+  _id: string;
+  type: string;
+  posX: number;
+  posY: number;
+  level: number;
+}
+
 interface WorldCanvasProps {
   agents: Agent[];
+  resources: Resource[];
+  buildings: Building[];
   mapSeed: number;
   mapWidth: number;
   mapHeight: number;
   tileSize: number;
+  timeOfDay: number;
+  weather: string;
   onAgentSelect: (agentId: string) => void;
 }
 
 export function WorldCanvas({
   agents,
+  resources,
+  buildings,
   mapSeed,
   mapWidth,
   mapHeight,
   tileSize,
+  timeOfDay,
+  weather,
   onAgentSelect,
 }: WorldCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -48,8 +72,14 @@ export function WorldCanvas({
   }, [mapSeed, mapWidth, mapHeight, tileSize, onAgentSelect]);
 
   useEffect(() => {
-    worldRef.current?.updateAgents(agents);
-  }, [agents]);
+    const w = worldRef.current;
+    if (!w) return;
+    w.updateAgents(agents);
+    w.updateResources(resources);
+    w.updateBuildings(buildings);
+    w.updateTimeOfDay(timeOfDay);
+    w.updateWeather(weather);
+  }, [agents, resources, buildings, timeOfDay, weather]);
 
   return <div ref={containerRef} className="flex-1 relative" />;
 }

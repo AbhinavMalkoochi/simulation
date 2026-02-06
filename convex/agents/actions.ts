@@ -195,3 +195,224 @@ export const updateEmotion = internalMutation({
     });
   },
 });
+
+export const gatherResource = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    resourceType: v.string(),
+  },
+  handler: async (ctx, { agentId, resourceType }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    const resources = await ctx.db.query("resources").collect();
+    const nearby = resources.find(
+      (r) =>
+        r.type === resourceType &&
+        r.quantity > 0 &&
+        Math.abs(r.tileX - agent.position.x) <= 2 &&
+        Math.abs(r.tileY - agent.position.y) <= 2,
+    );
+
+    if (!nearby) return `No ${resourceType} nearby to gather.`;
+
+    const gatherAmount = Math.min(nearby.quantity, 1 + Math.floor(agent.skills.gathering / 2));
+    await ctx.db.patch(nearby._id, { quantity: nearby.quantity - gatherAmount });
+    await addItem(ctx, agentId, resourceType, gatherAmount);
+
+    await ctx.db.patch(agentId, {
+      status: "working",
+      energy: Math.max(0, agent.energy - 3),
+    });
+
+    const world = await ctx.db.query("worldState").first();
+    const tick = world?.tick ?? 0;
+
+    await ctx.db.insert("worldEvents", {
+      type: "gather",
+      description: `${agent.name} gathered ${gatherAmount} ${resourceType}.`,
+      involvedAgentIds: [agentId],
+      tick,
+    });
+
+    return `Gathered ${gatherAmount} ${resourceType}. Energy: ${Math.max(0, agent.energy - 3)}%.`;
+  },
+});
+
+export const craftItem = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    recipeName: v.string(),
+  },
+  handler: async (ctx, { agentId, recipeName }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    const recipe = findRecipe(recipeName);
+    if (!recipe) return `Unknown recipe: ${recipeName}.`;
+
+    const skillLevel = agent.skills[recipe.skillRequired as keyof typeof agent.skills] ?? 0;
+    if (skillLevel < recipe.minSkillLevel) {
+      return `Need ${recipe.skillRequired} level ${recipe.minSkillLevel}, you have ${skillLevel}.`;
+    }
+
+    const hasRequired = await hasItems(
+      ctx,
+      agentId,
+      recipe.inputs,
+    );
+    if (!hasRequired) return "Not enough materials.";
+
+    for (const input of recipe.inputs) {
+      await removeItem(ctx, agentId, input.type, input.quantity);
+    }
+    await addItem(ctx, agentId, recipe.output.type, recipe.output.quantity);
+
+    await ctx.db.patch(agentId, { status: "working", energy: Math.max(0, agent.energy - 5) });
+
+    const world = await ctx.db.query("worldState").first();
+    await ctx.db.insert("worldEvents", {
+      type: "craft",
+      description: `${agent.name} crafted ${recipe.output.quantity} ${recipe.output.type}.`,
+      involvedAgentIds: [agentId],
+      tick: world?.tick ?? 0,
+    });
+
+    return `Crafted ${recipe.output.quantity} ${recipe.output.type}.`;
+  },
+});
+
+export const buildStructure = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    buildingType: v.string(),
+  },
+  handler: async (ctx, { agentId, buildingType }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    const cost = BUILDING_COSTS[buildingType];
+    if (!cost) return `Unknown building type: ${buildingType}.`;
+
+    const skillLevel = agent.skills[cost.skillRequired as keyof typeof agent.skills] ?? 0;
+    if (skillLevel < cost.minSkillLevel) {
+      return `Need ${cost.skillRequired} level ${cost.minSkillLevel}, you have ${skillLevel}.`;
+    }
+
+    const hasRequired = await hasItems(ctx, agentId, cost.resources);
+    if (!hasRequired) return "Not enough materials to build.";
+
+    const existing = await ctx.db
+      .query("buildings")
+      .withIndex("by_position", (q) =>
+        q.eq("posX", agent.position.x).eq("posY", agent.position.y),
+      )
+      .first();
+    if (existing) return "There is already a building here.";
+
+    for (const input of cost.resources) {
+      await removeItem(ctx, agentId, input.type, input.quantity);
+    }
+
+    await ctx.db.insert("buildings", {
+      type: buildingType as "shelter" | "workshop" | "market" | "meetingHall" | "farm" | "storehouse",
+      posX: agent.position.x,
+      posY: agent.position.y,
+      ownerId: agentId,
+      condition: 100,
+      level: 1,
+    });
+
+    await ctx.db.patch(agentId, { status: "working", energy: Math.max(0, agent.energy - 10) });
+
+    const world = await ctx.db.query("worldState").first();
+    await ctx.db.insert("worldEvents", {
+      type: "build",
+      description: `${agent.name} built a ${buildingType} at (${agent.position.x}, ${agent.position.y}).`,
+      involvedAgentIds: [agentId],
+      tick: world?.tick ?? 0,
+    });
+
+    return `Built a ${buildingType} at your location.`;
+  },
+});
+
+export const giveItem = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    targetName: v.string(),
+    itemType: v.string(),
+    quantity: v.number(),
+  },
+  handler: async (ctx, { agentId, targetName, itemType, quantity }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    const allAgents = await ctx.db.query("agents").collect();
+    const target = allAgents.find(
+      (a) =>
+        a.name.toLowerCase() === targetName.toLowerCase() &&
+        Math.abs(a.position.x - agent.position.x) <= 3 &&
+        Math.abs(a.position.y - agent.position.y) <= 3,
+    );
+    if (!target) return `${targetName} is not nearby.`;
+
+    const removed = await removeItem(ctx, agentId, itemType, quantity);
+    if (!removed) return `You don't have ${quantity} ${itemType}.`;
+
+    await addItem(ctx, target._id, itemType, quantity);
+
+    const world = await ctx.db.query("worldState").first();
+    const tick = world?.tick ?? 0;
+
+    await ctx.db.insert("memories", {
+      agentId: target._id,
+      type: "observation",
+      content: `${agent.name} gave me ${quantity} ${itemType}.`,
+      importance: 6,
+      tick,
+    });
+
+    await ctx.db.insert("worldEvents", {
+      type: "gift",
+      description: `${agent.name} gave ${quantity} ${itemType} to ${target.name}.`,
+      involvedAgentIds: [agentId, target._id],
+      tick,
+    });
+
+    return `Gave ${quantity} ${itemType} to ${target.name}.`;
+  },
+});
+
+export const eatFood = internalMutation({
+  args: { agentId: v.id("agents") },
+  handler: async (ctx, { agentId }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    let removed = await removeItem(ctx, agentId, "meal", 1);
+    let energyGain = 25;
+
+    if (!removed) {
+      removed = await removeItem(ctx, agentId, "food", 1);
+      energyGain = 10;
+    }
+
+    if (!removed) return "You have no food or meals.";
+
+    await ctx.db.patch(agentId, {
+      energy: Math.min(100, agent.energy + energyGain),
+    });
+
+    return `Ate and recovered ${energyGain} energy. Now at ${Math.min(100, agent.energy + energyGain)}%.`;
+  },
+});
+
+export const checkInventory = internalMutation({
+  args: { agentId: v.id("agents") },
+  handler: async (ctx, { agentId }) => {
+    const items = await getInventory(ctx, agentId);
+    if (items.length === 0) return "Your inventory is empty.";
+    return "Inventory: " + items.map((i) => `${i.quantity} ${i.itemType}`).join(", ") + ".";
+  },
+});

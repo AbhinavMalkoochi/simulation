@@ -77,6 +77,101 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
         });
       },
     }),
+
+    gatherResource: tool({
+      description: "Gather a resource from nearby tiles. Types: wood, stone, food, metal, herbs.",
+      parameters: z.object({
+        resourceType: z.string().describe("Type of resource to gather"),
+      }),
+      execute: async ({ resourceType }) => {
+        return ctx.runMutation(internal.agents.actions.gatherResource, {
+          agentId,
+          resourceType,
+        });
+      },
+    }),
+
+    craft: tool({
+      description: "Craft an item using resources in your inventory. Recipes: wooden_plank (3 wood), stone_tools (2 stone + 1 wood), meal (2 food), medicine (3 herbs), metal_tools (2 metal + 1 wood), rope (2 herbs + 1 wood).",
+      parameters: z.object({
+        recipeName: z.string().describe("Name of the recipe to craft"),
+      }),
+      execute: async ({ recipeName }) => {
+        return ctx.runMutation(internal.agents.actions.craftItem, {
+          agentId,
+          recipeName,
+        });
+      },
+    }),
+
+    buildStructure: tool({
+      description: "Build a structure at your current location. Types: shelter (5 wood + 3 stone), workshop (8 wood + 5 stone + 2 metal), market (10 wood + 8 stone), farm (4 wood + 2 stone), storehouse (6 wood + 4 stone).",
+      parameters: z.object({
+        buildingType: z.string().describe("Type of building to construct"),
+      }),
+      execute: async ({ buildingType }) => {
+        return ctx.runMutation(internal.agents.actions.buildStructure, {
+          agentId,
+          buildingType,
+        });
+      },
+    }),
+
+    giveItem: tool({
+      description: "Give an item from your inventory to a nearby person.",
+      parameters: z.object({
+        targetName: z.string().describe("Name of the person"),
+        itemType: z.string().describe("Type of item to give"),
+        quantity: z.number().describe("How many to give"),
+      }),
+      execute: async ({ targetName, itemType, quantity }) => {
+        return ctx.runMutation(internal.agents.actions.giveItem, {
+          agentId,
+          targetName,
+          itemType,
+          quantity: Math.round(quantity),
+        });
+      },
+    }),
+
+    eat: tool({
+      description: "Eat food from your inventory to recover energy. Meals give 25 energy, raw food gives 10.",
+      parameters: z.object({}),
+      execute: async () => {
+        return ctx.runMutation(internal.agents.actions.eatFood, { agentId });
+      },
+    }),
+
+    checkInventory: tool({
+      description: "Check what items you are carrying.",
+      parameters: z.object({}),
+      execute: async () => {
+        return ctx.runMutation(internal.agents.actions.checkInventory, { agentId });
+      },
+    }),
+
+    explore: tool({
+      description: "Move to a random area to discover new resources or meet people.",
+      parameters: z.object({
+        direction: z.enum(["north", "south", "east", "west"]).describe("General direction to explore"),
+      }),
+      execute: async ({ direction }) => {
+        const offsets: Record<string, { dx: number; dy: number }> = {
+          north: { dx: 0, dy: -8 },
+          south: { dx: 0, dy: 8 },
+          east: { dx: 8, dy: 0 },
+          west: { dx: -8, dy: 0 },
+        };
+        const offset = offsets[direction] ?? offsets["north"];
+        const agent = await ctx.runQuery(internal.agents.queries.getById, { agentId });
+        if (!agent) return "Agent not found.";
+        return ctx.runMutation(internal.agents.actions.moveAgent, {
+          agentId,
+          targetX: Math.max(0, Math.min(49, agent.position.x + offset.dx)),
+          targetY: Math.max(0, Math.min(49, agent.position.y + offset.dy)),
+        });
+      },
+    }),
   };
 }
 
@@ -104,7 +199,10 @@ export const think = internalAction({
       })),
       nearbyResources,
       pendingConversations,
+      inventory: inventory.map((i) => ({ itemType: i.itemType, quantity: i.quantity })),
+      nearbyBuildings: nearbyBuildings.map((b) => ({ type: b.type, posX: b.posX, posY: b.posY })),
       timeOfDay: world.timeOfDay,
+      weather: world.weather,
       tick,
     });
 

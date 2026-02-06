@@ -9,6 +9,8 @@ export function App() {
   const worldState = useQuery(api.world.getState);
   const agents = useQuery(api.agents.list);
   const events = useQuery(api.events.recent);
+  const resources = useQuery(api.world.getResources);
+  const buildings = useQuery(api.world.getBuildings);
   const seedWorld = useMutation(api.init.seedWorld);
   const togglePause = useMutation(api.world.togglePause);
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
@@ -54,10 +56,14 @@ export function App() {
       <div className="flex-1 flex overflow-hidden">
         <WorldCanvas
           agents={agents ?? []}
+          resources={resources ?? []}
+          buildings={buildings ?? []}
           mapSeed={worldState.mapSeed}
           mapWidth={worldState.mapWidth}
           mapHeight={worldState.mapHeight}
           tileSize={worldState.tileSize}
+          timeOfDay={worldState.timeOfDay}
+          weather={worldState.weather}
           onAgentSelect={setSelectedAgentId}
         />
         <Sidebar

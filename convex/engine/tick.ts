@@ -26,7 +26,6 @@ export const run = internalMutation({
 
     const mapTiles = generateMap(world.mapSeed, world.mapWidth, world.mapHeight);
     const agents = await ctx.db.query("agents").collect();
-    const rand = seededRandom(world.mapSeed + newTick);
 
     for (const agent of agents) {
       if (agent.path && agent.path.length > 0) {

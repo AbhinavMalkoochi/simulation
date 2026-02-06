@@ -42,7 +42,19 @@ export const getThinkingContext = internalQuery({
         r.quantity > 0,
     );
 
-    return { agent, world, memories, nearbyAgents, pendingConversations, nearbyResources };
+    const inventory = await ctx.db
+      .query("inventory")
+      .withIndex("by_agent", (q) => q.eq("agentId", agentId))
+      .collect();
+
+    const buildings = await ctx.db.query("buildings").collect();
+    const nearbyBuildings = buildings.filter(
+      (b) =>
+        Math.abs(b.posX - agent.position.x) <= 5 &&
+        Math.abs(b.posY - agent.position.y) <= 5,
+    );
+
+    return { agent, world, memories, nearbyAgents, pendingConversations, nearbyResources, inventory, nearbyBuildings };
   },
 });
 

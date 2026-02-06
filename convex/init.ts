@@ -121,9 +121,50 @@ export const seedWorld = mutation({
       });
     }
 
+    const TILE_RESOURCE: Record<number, string> = { 3: "wood", 4: "stone" };
+    for (let y = 0; y < MAP_HEIGHT; y++) {
+      for (let x = 0; x < MAP_WIDTH; x++) {
+        const tile = mapTiles[y * MAP_WIDTH + x];
+        const resourceType = TILE_RESOURCE[tile];
+        if (resourceType && rand() < 0.15) {
+          await ctx.db.insert("resources", {
+            tileX: x,
+            tileY: y,
+            type: resourceType as "wood" | "stone" | "food" | "metal" | "herbs",
+            quantity: 3 + Math.floor(rand() * 5),
+            maxQuantity: 8,
+            regenRate: 0.2,
+          });
+        }
+
+        if (tile === 2 && rand() < 0.05) {
+          const rType = rand() < 0.5 ? "food" : "herbs";
+          await ctx.db.insert("resources", {
+            tileX: x,
+            tileY: y,
+            type: rType as "food" | "herbs",
+            quantity: 2 + Math.floor(rand() * 4),
+            maxQuantity: 6,
+            regenRate: 0.3,
+          });
+        }
+
+        if (tile === 4 && rand() < 0.03) {
+          await ctx.db.insert("resources", {
+            tileX: x,
+            tileY: y,
+            type: "metal",
+            quantity: 1 + Math.floor(rand() * 3),
+            maxQuantity: 4,
+            regenRate: 0.05,
+          });
+        }
+      }
+    }
+
     await ctx.db.insert("worldEvents", {
       type: "world_created",
-      description: "The world awakens. Ten souls find themselves in an untamed land.",
+      description: "The world awakens. Ten souls find themselves in an untamed land, rich with resources.",
       involvedAgentIds: [],
       tick: 0,
     });

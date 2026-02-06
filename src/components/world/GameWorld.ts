@@ -11,6 +11,22 @@ interface AgentData {
   energy: number;
 }
 
+interface ResourceData {
+  _id: string;
+  tileX: number;
+  tileY: number;
+  type: string;
+  quantity: number;
+}
+
+interface BuildingData {
+  _id: string;
+  type: string;
+  posX: number;
+  posY: number;
+  level: number;
+}
+
 interface AgentSprite {
   container: Container;
   body: Graphics;
@@ -245,6 +261,13 @@ export class GameWorld {
     this.worldContainer.scale.set(this.camera.zoom);
     this.worldContainer.x = -this.camera.x * this.camera.zoom + w / 2;
     this.worldContainer.y = -this.camera.y * this.camera.zoom + h / 2;
+  }
+
+  private getDarkness(timeOfDay: number): number {
+    if (timeOfDay >= 7 && timeOfDay <= 18) return 0;
+    if (timeOfDay >= 21 || timeOfDay <= 5) return 0.45;
+    if (timeOfDay > 18 && timeOfDay < 21) return ((timeOfDay - 18) / 3) * 0.45;
+    return ((7 - timeOfDay) / 2) * 0.45;
   }
 
   private centerCamera(): void {
