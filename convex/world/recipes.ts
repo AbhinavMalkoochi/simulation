@@ -89,6 +89,12 @@ export const BUILDING_COSTS: Record<string, BuildingCost> = {
     skillRequired: "building",
     minSkillLevel: 2,
   },
+  meetingHall: {
+    type: "meetingHall",
+    resources: [{ type: "wood", quantity: 12 }, { type: "stone", quantity: 10 }, { type: "metal", quantity: 3 }],
+    skillRequired: "building",
+    minSkillLevel: 3,
+  },
 };
 
 export function findRecipe(name: string): Recipe | undefined {

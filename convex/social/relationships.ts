@@ -1,5 +1,9 @@
 import type { Id } from "../_generated/dataModel";
-import type { MutationCtx, QueryCtx } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
+
+function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v));
+}
 
 export async function updateRelationship(
   ctx: MutationCtx,
@@ -31,28 +35,4 @@ export async function updateRelationship(
       lastInteractionTick: tick,
     });
   }
-}
-
-export async function getRelationshipsFor(
-  ctx: QueryCtx | MutationCtx,
-  agentId: Id<"agents">,
-): Promise<Array<{ targetAgentId: Id<"agents">; trust: number; affinity: number; interactionCount: number }>> {
-  return ctx.db
-    .query("relationships")
-    .withIndex("by_agent", (q) => q.eq("agentId", agentId))
-    .collect();
-}
-
-export async function getReputation(
-  ctx: QueryCtx | MutationCtx,
-  agentId: Id<"agents">,
-): Promise<number> {
-  const incoming = await ctx.db.query("relationships").collect();
-  const aboutMe = incoming.filter((r) => r.targetAgentId === agentId);
-  if (aboutMe.length === 0) return 0;
-  return aboutMe.reduce((sum, r) => sum + r.trust, 0) / aboutMe.length;
-}
-
-function clamp(v: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, v));
 }

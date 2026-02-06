@@ -92,6 +92,10 @@ export const speakTo = internalMutation({
 
     await ctx.db.patch(speakerId, { status: "talking" });
 
+    // Conversations build small amounts of trust and affinity
+    await updateRelationship(ctx, speakerId, target._id, 0.03, 0.05, tick);
+    await updateRelationship(ctx, target._id, speakerId, 0.03, 0.05, tick);
+
     await ctx.db.insert("memories", {
       agentId: target._id,
       type: "conversation",
@@ -294,6 +298,13 @@ export const buildStructure = internalMutation({
     const agent = await ctx.db.get(agentId);
     if (!agent) return "Agent not found.";
 
+    const VALID_BUILDINGS = ["shelter", "workshop", "market", "meetingHall", "farm", "storehouse"] as const;
+    type BuildingType = (typeof VALID_BUILDINGS)[number];
+
+    if (!VALID_BUILDINGS.includes(buildingType as BuildingType)) {
+      return `Unknown building type: ${buildingType}.`;
+    }
+
     const cost = BUILDING_COSTS[buildingType];
     if (!cost) return `Unknown building type: ${buildingType}.`;
 
@@ -318,7 +329,7 @@ export const buildStructure = internalMutation({
     }
 
     await ctx.db.insert("buildings", {
-      type: buildingType as "shelter" | "workshop" | "market" | "meetingHall" | "farm" | "storehouse",
+      type: buildingType as BuildingType,
       posX: agent.position.x,
       posY: agent.position.y,
       ownerId: agentId,

@@ -272,7 +272,7 @@ export const think = internalAction({
     const scored = scoreMemories(memories, tick);
 
     const systemPrompt = buildSystemPrompt({
-      agent: { ...agent, _id: agentId as string },
+      agent: { ...agent, _id: String(agentId) },
       memories: scored.slice(0, 12),
       nearbyAgents: nearbyAgents.map((a) => ({
         name: a.name,

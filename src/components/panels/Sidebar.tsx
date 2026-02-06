@@ -1,44 +1,19 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { AGENT_COLORS } from "../../../convex/lib/constants";
 import { EventFeed } from "./EventFeed";
 import { AgentInspector } from "./AgentInspector";
 import { SocialGraph } from "./SocialGraph";
 import { EconomyDashboard } from "./EconomyDashboard";
 import { Newspaper } from "./Newspaper";
-import type { Id } from "../../../convex/_generated/dataModel";
-
-interface Agent {
-  _id: Id<"agents">;
-  name: string;
-  backstory: string;
-  personality: {
-    openness: number;
-    conscientiousness: number;
-    extraversion: number;
-    agreeableness: number;
-    neuroticism: number;
-  };
-  position: { x: number; y: number };
-  energy: number;
-  emotion: { valence: number; arousal: number };
-  status: string;
-  currentPlan?: string;
-  currentAction?: string;
-  skills: Record<string, number>;
-  spriteSeed: number;
-}
-
-interface WorldEvent {
-  _id: string;
-  type: string;
-  description: string;
-  tick: number;
-}
+import { GodMode } from "./GodMode";
+import { STATUS_BADGE, agentColorHex } from "../../types";
+import type { AgentDoc, WorldEvent } from "../../types";
 
 interface SidebarProps {
-  selectedAgent: Agent | null;
-  agents: Agent[];
+  selectedAgent: AgentDoc | null;
+  agents: AgentDoc[];
   events: WorldEvent[];
   onAgentSelect: (agentId: string | null) => void;
 }
@@ -48,23 +23,10 @@ const TABS = [
   { id: "social", label: "Social" },
   { id: "economy", label: "Econ" },
   { id: "news", label: "News" },
+  { id: "god", label: "God" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
-
-const STATUS_BADGE: Record<string, string> = {
-  idle: "bg-slate-600",
-  moving: "bg-emerald-600",
-  talking: "bg-blue-600",
-  working: "bg-amber-600",
-  sleeping: "bg-indigo-600",
-  exploring: "bg-pink-600",
-};
-
-const AGENT_COLORS = [
-  0xe74c3c, 0x3498db, 0x2ecc71, 0xf39c12, 0x9b59b6,
-  0x1abc9c, 0xe67e22, 0xf1c40f, 0x00bcd4, 0xff6b81,
-];
 
 export function Sidebar({ selectedAgent, agents, events, onAgentSelect }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<TabId>("agents");
@@ -114,9 +76,7 @@ export function Sidebar({ selectedAgent, agents, events, onAgentSelect }: Sideba
               >
                 <div
                   className="w-3 h-3 rounded-full shrink-0"
-                  style={{
-                    backgroundColor: `#${AGENT_COLORS[agent.spriteSeed % AGENT_COLORS.length].toString(16).padStart(6, "0")}`,
-                  }}
+                  style={{ backgroundColor: agentColorHex(agent.spriteSeed, AGENT_COLORS) }}
                 />
                 <span className="text-xs text-slate-300 truncate flex-1">{agent.name}</span>
                 <span className="text-[9px] text-slate-500 font-mono">{Math.round(agent.energy)}%</span>
@@ -139,6 +99,8 @@ export function Sidebar({ selectedAgent, agents, events, onAgentSelect }: Sideba
         {activeTab === "economy" && <EconomyDashboard stats={economyStats} />}
 
         {activeTab === "news" && <Newspaper data={newspaper} />}
+
+        {activeTab === "god" && <GodMode />}
       </div>
 
       <div className="p-3 border-t border-slate-800 shrink-0 overflow-hidden flex flex-col" style={{ maxHeight: "30%" }}>

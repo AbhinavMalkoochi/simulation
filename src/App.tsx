@@ -4,28 +4,7 @@ import { api } from "../convex/_generated/api";
 import { WorldCanvas } from "./components/world/WorldCanvas";
 import { Sidebar } from "./components/panels/Sidebar";
 import { Toolbar } from "./components/ui/Toolbar";
-import type { Id } from "../convex/_generated/dataModel";
-
-interface AgentDoc {
-  _id: Id<"agents">;
-  name: string;
-  backstory: string;
-  personality: {
-    openness: number;
-    conscientiousness: number;
-    extraversion: number;
-    agreeableness: number;
-    neuroticism: number;
-  };
-  position: { x: number; y: number };
-  energy: number;
-  emotion: { valence: number; arousal: number };
-  status: string;
-  currentPlan?: string;
-  currentAction?: string;
-  skills: Record<string, number>;
-  spriteSeed: number;
-}
+import type { AgentDoc } from "./types";
 
 export function App() {
   const worldState = useQuery(api.world.getState);
@@ -39,14 +18,12 @@ export function App() {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [directorMode, setDirectorMode] = useState(false);
 
-  // Director mode: derive selected agent deterministically from tick
-  const directorAgentId = (directorMode && agents && agents.length > 0 && worldState)
-    ? (() => {
-        const moving = agents.filter((a: AgentDoc) => a.status !== "idle" && a.status !== "sleeping");
-        const pool = moving.length > 0 ? moving : agents;
-        return pool[worldState.tick % pool.length]?._id ?? null;
-      })()
-    : null;
+  const directorAgentId = (() => {
+    if (!directorMode || !agents?.length || !worldState) return null;
+    const active = agents.filter((a) => a.status !== "idle" && a.status !== "sleeping");
+    const pool = active.length > 0 ? active : agents;
+    return pool[worldState.tick % pool.length]?._id ?? null;
+  })();
 
   const effectiveAgentId = directorMode ? directorAgentId : selectedAgentId;
 
@@ -76,7 +53,7 @@ export function App() {
     );
   }
 
-  const selectedAgent = agents?.find((a: AgentDoc) => a._id === effectiveAgentId) ?? null;
+  const selectedAgent = agents?.find((a) => a._id === effectiveAgentId) ?? null;
 
   return (
     <div className="h-screen flex flex-col bg-slate-950 text-slate-100">
@@ -88,7 +65,7 @@ export function App() {
         agentCount={agents?.length ?? 0}
         directorMode={directorMode}
         onTogglePause={() => togglePause()}
-        onToggleDirector={() => setDirectorMode((d: boolean) => !d)}
+        onToggleDirector={() => setDirectorMode((d) => !d)}
       />
       <div className="flex-1 flex overflow-hidden">
         <WorldCanvas

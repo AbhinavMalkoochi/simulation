@@ -58,7 +58,7 @@ export const ask = action({
     const scored = scoreMemories(memories, tick);
 
     const systemPrompt = `${buildSystemPrompt({
-      agent: { ...typedAgent, _id: agentId as string },
+      agent: { ...typedAgent, _id: String(agentId) },
       memories: scored.slice(0, 10),
       nearbyAgents: nearbyAgents.map((a: NearbyAgent) => ({ name: a.name, position: a.position, status: a.status })),
       nearbyResources,

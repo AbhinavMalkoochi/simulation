@@ -1,35 +1,11 @@
 import { useEffect, useRef } from "react";
 import { GameWorld } from "./GameWorld";
-
-interface Agent {
-  _id: string;
-  name: string;
-  position: { x: number; y: number };
-  status: string;
-  spriteSeed: number;
-  energy: number;
-}
-
-interface Resource {
-  _id: string;
-  tileX: number;
-  tileY: number;
-  type: string;
-  quantity: number;
-}
-
-interface Building {
-  _id: string;
-  type: string;
-  posX: number;
-  posY: number;
-  level: number;
-}
+import type { AgentSpriteData, ResourceData, BuildingData } from "../../types";
 
 interface WorldCanvasProps {
-  agents: Agent[];
-  resources: Resource[];
-  buildings: Building[];
+  agents: AgentSpriteData[];
+  resources: ResourceData[];
+  buildings: BuildingData[];
   mapSeed: number;
   mapWidth: number;
   mapHeight: number;

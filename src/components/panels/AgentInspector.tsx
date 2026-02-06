@@ -1,41 +1,9 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
-
-interface Agent {
-  _id: Id<"agents">;
-  name: string;
-  backstory: string;
-  personality: {
-    openness: number;
-    conscientiousness: number;
-    extraversion: number;
-    agreeableness: number;
-    neuroticism: number;
-  };
-  position: { x: number; y: number };
-  energy: number;
-  emotion: { valence: number; arousal: number };
-  status: string;
-  currentPlan?: string;
-  currentAction?: string;
-  skills: Record<string, number>;
-  spriteSeed: number;
-}
-
-const AGENT_COLORS = [
-  0xe74c3c, 0x3498db, 0x2ecc71, 0xf39c12, 0x9b59b6,
-  0x1abc9c, 0xe67e22, 0xf1c40f, 0x00bcd4, 0xff6b81,
-];
-
-const STATUS_BADGE: Record<string, string> = {
-  idle: "bg-slate-600",
-  moving: "bg-emerald-600",
-  talking: "bg-blue-600",
-  working: "bg-amber-600",
-  sleeping: "bg-indigo-600",
-  exploring: "bg-pink-600",
-};
+import { AGENT_COLORS } from "../../../convex/lib/constants";
+import { STATUS_BADGE, agentColorHex } from "../../types";
+import { InterviewChat } from "./InterviewChat";
+import type { AgentDoc } from "../../types";
 
 const TRAIT_LABELS: Record<string, string> = {
   openness: "OPN",
@@ -66,12 +34,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export function AgentInspector({ agent, onClose }: { agent: Agent; onClose: () => void }) {
+export function AgentInspector({ agent, onClose }: { agent: AgentDoc; onClose: () => void }) {
   const memories = useQuery(api.agents.getMemories, { agentId: agent._id, limit: 10 });
   const inventory = useQuery(api.world.getInventory, { agentId: agent._id });
   const conversations = useQuery(api.agents.getConversations, { agentId: agent._id });
 
-  const color = `#${AGENT_COLORS[agent.spriteSeed % AGENT_COLORS.length].toString(16).padStart(6, "0")}`;
+  const color = agentColorHex(agent.spriteSeed, AGENT_COLORS);
 
   return (
     <div className="flex flex-col gap-3 overflow-y-auto p-3">
@@ -172,6 +140,12 @@ export function AgentInspector({ agent, onClose }: { agent: Agent; onClose: () =
           </div>
         </Section>
       )}
+
+      <Section title="Interview">
+        <div className="h-48">
+          <InterviewChat agentId={agent._id} agentName={agent.name} />
+        </div>
+      </Section>
 
       <div className="text-[10px] text-slate-600 font-mono">
         pos ({agent.position.x}, {agent.position.y})

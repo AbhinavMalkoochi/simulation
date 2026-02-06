@@ -2,6 +2,7 @@ import { internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { generateMap, isWalkable } from "../lib/mapgen";
 import { findPath } from "./pathfinding";
+import { nextWeather, regenerateResources, applyBuildingEffects } from "../world/systems";
 
 function seededRandom(seed: number): () => number {
   let s = seed;
@@ -69,6 +70,13 @@ export const run = internalMutation({
 
       if (agent.status === "talking") {
         await ctx.db.patch(agent._id, { status: "idle" });
+        // Close any active conversations this agent is in
+        const activeConvs = await ctx.db.query("conversations").order("desc").take(10);
+        for (const conv of activeConvs) {
+          if (!conv.endTick && conv.participantIds.includes(agent._id)) {
+            await ctx.db.patch(conv._id, { endTick: newTick });
+          }
+        }
         continue;
       }
 
@@ -100,6 +108,26 @@ export const run = internalMutation({
           });
         }
       }
+    }
+
+    // Resource regeneration every 5 ticks
+    if (newTick % 5 === 0) {
+      await regenerateResources(ctx);
+    }
+
+    // Weather transition every 10 ticks
+    if (newTick % 10 === 0) {
+      const newWeather = nextWeather(world.weather, rand);
+      if (newWeather !== world.weather) {
+        await ctx.db.patch(world._id, {
+          weather: newWeather as "clear" | "rain" | "storm" | "fog",
+        });
+      }
+    }
+
+    // Building effects (farm food production) every 10 ticks
+    if (newTick % 10 === 0) {
+      await applyBuildingEffects(ctx);
     }
 
     if (newTick % 20 === 0) {

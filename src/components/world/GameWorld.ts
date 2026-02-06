@@ -1,31 +1,7 @@
 import { Application, Container, Graphics, Text, TextStyle } from "pixi.js";
 import { TILE_COLORS, AGENT_COLORS } from "../../../convex/lib/constants";
 import { generateMap } from "../../../convex/lib/mapgen";
-
-interface AgentData {
-  _id: string;
-  name: string;
-  position: { x: number; y: number };
-  status: string;
-  spriteSeed: number;
-  energy: number;
-}
-
-interface ResourceData {
-  _id: string;
-  tileX: number;
-  tileY: number;
-  type: string;
-  quantity: number;
-}
-
-interface BuildingData {
-  _id: string;
-  type: string;
-  posX: number;
-  posY: number;
-  level: number;
-}
+import type { AgentSpriteData, ResourceData, BuildingData } from "../../types";
 
 interface AgentSprite {
   container: Container;
@@ -149,7 +125,7 @@ export class GameWorld {
     this.onAgentSelect = cb;
   }
 
-  updateAgents(agents: AgentData[]): void {
+  updateAgents(agents: AgentSpriteData[]): void {
     const currentIds = new Set(agents.map((a) => a._id));
 
     for (const [id, sprite] of this.agentSprites) {
@@ -262,7 +238,7 @@ export class GameWorld {
     }
   }
 
-  private createAgentSprite(agent: AgentData): AgentSprite {
+  private createAgentSprite(agent: AgentSpriteData): AgentSprite {
     const container = new Container();
     container.eventMode = "static";
     container.cursor = "pointer";

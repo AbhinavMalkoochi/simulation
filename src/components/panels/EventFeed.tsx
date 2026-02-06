@@ -1,11 +1,5 @@
 import { useState } from "react";
-
-interface WorldEvent {
-  _id: string;
-  type: string;
-  description: string;
-  tick: number;
-}
+import type { WorldEvent } from "../../types";
 
 interface EventFeedProps {
   events: WorldEvent[];
