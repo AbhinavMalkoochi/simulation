@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { WorldCanvas } from "./components/world/WorldCanvas";
@@ -13,7 +13,24 @@ export function App() {
   const buildings = useQuery(api.world.getBuildings);
   const seedWorld = useMutation(api.init.seedWorld);
   const togglePause = useMutation(api.world.togglePause);
+
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [directorMode, setDirectorMode] = useState(false);
+  const lastDirectorTick = useRef(0);
+
+  if (directorMode && agents && agents.length > 0 && worldState) {
+    const tick = worldState.tick;
+    if (tick !== lastDirectorTick.current) {
+      lastDirectorTick.current = tick;
+      const moving = agents.filter((a) => a.status !== "idle" && a.status !== "sleeping");
+      const target = moving.length > 0
+        ? moving[Math.floor(Math.random() * moving.length)]
+        : agents[Math.floor(Math.random() * agents.length)];
+      if (target && target._id !== selectedAgentId) {
+        setSelectedAgentId(target._id);
+      }
+    }
+  }
 
   if (worldState === undefined) {
     return (
@@ -51,7 +68,9 @@ export function App() {
         weather={worldState.weather}
         paused={worldState.paused}
         agentCount={agents?.length ?? 0}
+        directorMode={directorMode}
         onTogglePause={() => togglePause()}
+        onToggleDirector={() => setDirectorMode((d) => !d)}
       />
       <div className="flex-1 flex overflow-hidden">
         <WorldCanvas
