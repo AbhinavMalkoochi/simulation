@@ -1,6 +1,12 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 
 export const getState = query({
+  handler: async (ctx) => {
+    return ctx.db.query("worldState").first();
+  },
+});
+
+export const getStateInternal = internalQuery({
   handler: async (ctx) => {
     return ctx.db.query("worldState").first();
   },
