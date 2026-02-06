@@ -58,12 +58,32 @@ const STATUS_COLORS: Record<string, number> = {
   exploring: 0xf472b6,
 };
 
+const RESOURCE_COLORS: Record<string, number> = {
+  wood: 0x8b5e3c,
+  stone: 0x9ca3af,
+  food: 0xf97316,
+  metal: 0x6b7280,
+  herbs: 0x22c55e,
+};
+
+const BUILDING_COLORS: Record<string, number> = {
+  shelter: 0xca8a04,
+  workshop: 0xa16207,
+  market: 0x0891b2,
+  meetingHall: 0x7c3aed,
+  farm: 0x65a30d,
+  storehouse: 0x78716c,
+};
+
 export class GameWorld {
   private app!: Application;
   private worldContainer!: Container;
   private tileGraphics!: Graphics;
   private gridGraphics!: Graphics;
+  private resourceLayer!: Graphics;
+  private buildingLayer!: Graphics;
   private agentContainer!: Container;
+  private dayNightOverlay!: Graphics;
   private agentSprites = new Map<string, AgentSprite>();
 
   private camera = { x: 0, y: 0, zoom: 1 };
@@ -97,8 +117,17 @@ export class GameWorld {
     this.gridGraphics = new Graphics();
     this.worldContainer.addChild(this.gridGraphics);
 
+    this.resourceLayer = new Graphics();
+    this.worldContainer.addChild(this.resourceLayer);
+
+    this.buildingLayer = new Graphics();
+    this.worldContainer.addChild(this.buildingLayer);
+
     this.agentContainer = new Container();
     this.worldContainer.addChild(this.agentContainer);
+
+    this.dayNightOverlay = new Graphics();
+    this.worldContainer.addChild(this.dayNightOverlay);
 
     this.setupControls(this.app.canvas as HTMLCanvasElement);
 
@@ -145,6 +174,56 @@ export class GameWorld {
       sprite.statusDot.clear();
       sprite.statusDot.circle(0, 0, 3).fill(statusColor);
     }
+  }
+
+  updateResources(resources: ResourceData[]): void {
+    this.resourceLayer.clear();
+    const half = this.tileSize / 2;
+    const dotRadius = this.tileSize * 0.15;
+
+    for (const res of resources) {
+      if (res.quantity <= 0) continue;
+      const color = RESOURCE_COLORS[res.type] ?? 0xffffff;
+      const cx = res.tileX * this.tileSize + half;
+      const cy = res.tileY * this.tileSize + half;
+      this.resourceLayer
+        .circle(cx, cy, dotRadius)
+        .fill({ color, alpha: 0.7 });
+    }
+  }
+
+  updateBuildings(buildings: BuildingData[]): void {
+    this.buildingLayer.clear();
+    const pad = this.tileSize * 0.1;
+    const size = this.tileSize - pad * 2;
+
+    for (const bld of buildings) {
+      const color = BUILDING_COLORS[bld.type] ?? 0xaaaaaa;
+      const bx = bld.posX * this.tileSize + pad;
+      const by = bld.posY * this.tileSize + pad;
+      this.buildingLayer
+        .rect(bx, by, size, size)
+        .fill({ color, alpha: 0.6 })
+        .rect(bx, by, size, size)
+        .stroke({ color: 0xffffff, width: 1, alpha: 0.3 });
+    }
+  }
+
+  updateTimeOfDay(timeOfDay: number): void {
+    const darkness = this.getDarkness(timeOfDay);
+    this.dayNightOverlay.clear();
+    if (darkness > 0) {
+      const totalW = this.mapWidth * this.tileSize;
+      const totalH = this.mapHeight * this.tileSize;
+      this.dayNightOverlay
+        .rect(0, 0, totalW, totalH)
+        .fill({ color: 0x000022, alpha: darkness });
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  updateWeather(_weather: string): void {
+    // Weather visual effects can be added here in the future
   }
 
   destroy(): void {
@@ -227,13 +306,6 @@ export class GameWorld {
     for (const sprite of this.agentSprites.values()) {
       sprite.container.x += (sprite.targetX - sprite.container.x) * lerp;
       sprite.container.y += (sprite.targetY - sprite.container.y) * lerp;
-
-      if (sprite.statusLabel.visible && sprite.statusLabel.alpha > 0) {
-        sprite.statusLabel.alpha -= 0.005;
-        if (sprite.statusLabel.alpha <= 0) {
-          sprite.statusLabel.visible = false;
-        }
-      }
     }
   }
 

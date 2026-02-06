@@ -55,7 +55,7 @@ export function SocialGraph({ agents, relationships, alliances }: SocialGraphPro
     canvas.width = w * 2;
     canvas.height = h * 2;
 
-    const nodes: Node[] = agents.map((a, i) => ({
+    const nodes: Node[] = agents.map((a) => ({
       id: a._id,
       name: a.name,
       color: COLORS[a.spriteSeed % COLORS.length],
@@ -111,7 +111,6 @@ export function SocialGraph({ agents, relationships, alliances }: SocialGraphPro
         if (!a || !b) continue;
         const dx = b.x - a.x;
         const dy = b.y - a.y;
-        const dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
         const strength = attraction * (1 + rel.interactionCount * 0.1);
         a.vx += dx * strength;
         a.vy += dy * strength;

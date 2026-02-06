@@ -1,6 +1,4 @@
-import { action, query } from "../_generated/server";
-import { internal } from "../_generated/api";
-import { v } from "convex/values";
+import { query } from "../_generated/server";
 
 export const getLatestSummary = query({
   handler: async (ctx) => {

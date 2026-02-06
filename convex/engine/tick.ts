@@ -3,7 +3,7 @@ import { internal } from "../_generated/api";
 import { generateMap, isWalkable } from "../lib/mapgen";
 import { findPath } from "./pathfinding";
 
-function seededRandom(seed: number) {
+function seededRandom(seed: number): () => number {
   let s = seed;
   return () => {
     s = (s * 1664525 + 1013904223) & 0x7fffffff;
@@ -25,6 +25,7 @@ export const run = internalMutation({
     });
 
     const mapTiles = generateMap(world.mapSeed, world.mapWidth, world.mapHeight);
+    const rand = seededRandom(newTick + world.mapSeed);
     const agents = await ctx.db.query("agents").collect();
 
     for (const agent of agents) {

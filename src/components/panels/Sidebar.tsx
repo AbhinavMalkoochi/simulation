@@ -139,8 +139,6 @@ export function Sidebar({ selectedAgent, agents, events, onAgentSelect }: Sideba
         {activeTab === "economy" && <EconomyDashboard stats={economyStats} />}
 
         {activeTab === "news" && <Newspaper data={newspaper} />}
-
-        {activeTab === "god" && <GodMode />}
       </div>
 
       <div className="p-3 border-t border-slate-800 shrink-0 overflow-hidden flex flex-col" style={{ maxHeight: "30%" }}>

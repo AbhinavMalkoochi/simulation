@@ -1,9 +1,8 @@
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { generateText } from "ai";
+import { generateText, tool, stepCountIs } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { tool } from "ai";
 import { z } from "zod";
 import { buildSystemPrompt, buildReflectionPrompt } from "./prompts";
 import { scoreMemories } from "./memory";
@@ -14,7 +13,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
   return {
     moveTo: tool({
       description: "Move to a specific location. Choose coordinates based on what you see nearby or want to explore.",
-      parameters: z.object({
+      inputSchema: z.object({
         x: z.number().describe("Target x coordinate"),
         y: z.number().describe("Target y coordinate"),
       }),
@@ -29,7 +28,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     speak: tool({
       description: "Say something to a nearby person. They will hear you and may respond later.",
-      parameters: z.object({
+      inputSchema: z.object({
         targetName: z.string().describe("Name of the person to talk to"),
         message: z.string().describe("What you want to say"),
       }),
@@ -44,7 +43,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     rest: tool({
       description: "Rest and recover energy. Use when your energy is below 30%.",
-      parameters: z.object({}),
+      inputSchema: z.object({}),
       execute: async () => {
         return ctx.runMutation(internal.agents.actions.restAgent, { agentId });
       },
@@ -52,7 +51,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     think: tool({
       description: "Record a private thought or observation about your situation.",
-      parameters: z.object({
+      inputSchema: z.object({
         thought: z.string().describe("Your thought or observation"),
       }),
       execute: async ({ thought }) => {
@@ -66,7 +65,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     setPlan: tool({
       description: "Set your current plan or goal. This helps you stay focused across time.",
-      parameters: z.object({
+      inputSchema: z.object({
         plan: z.string().describe("Your plan for the near future"),
       }),
       execute: async ({ plan }) => {
@@ -80,7 +79,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     gatherResource: tool({
       description: "Gather a resource from nearby tiles. Types: wood, stone, food, metal, herbs.",
-      parameters: z.object({
+      inputSchema: z.object({
         resourceType: z.string().describe("Type of resource to gather"),
       }),
       execute: async ({ resourceType }) => {
@@ -93,7 +92,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     craft: tool({
       description: "Craft an item using resources in your inventory. Recipes: wooden_plank (3 wood), stone_tools (2 stone + 1 wood), meal (2 food), medicine (3 herbs), metal_tools (2 metal + 1 wood), rope (2 herbs + 1 wood).",
-      parameters: z.object({
+      inputSchema: z.object({
         recipeName: z.string().describe("Name of the recipe to craft"),
       }),
       execute: async ({ recipeName }) => {
@@ -106,7 +105,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     buildStructure: tool({
       description: "Build a structure at your current location. Types: shelter (5 wood + 3 stone), workshop (8 wood + 5 stone + 2 metal), market (10 wood + 8 stone), farm (4 wood + 2 stone), storehouse (6 wood + 4 stone).",
-      parameters: z.object({
+      inputSchema: z.object({
         buildingType: z.string().describe("Type of building to construct"),
       }),
       execute: async ({ buildingType }) => {
@@ -119,7 +118,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     giveItem: tool({
       description: "Give an item from your inventory to a nearby person.",
-      parameters: z.object({
+      inputSchema: z.object({
         targetName: z.string().describe("Name of the person"),
         itemType: z.string().describe("Type of item to give"),
         quantity: z.number().describe("How many to give"),
@@ -136,7 +135,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     eat: tool({
       description: "Eat food from your inventory to recover energy. Meals give 25 energy, raw food gives 10.",
-      parameters: z.object({}),
+      inputSchema: z.object({}),
       execute: async () => {
         return ctx.runMutation(internal.agents.actions.eatFood, { agentId });
       },
@@ -144,7 +143,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     checkInventory: tool({
       description: "Check what items you are carrying.",
-      parameters: z.object({}),
+      inputSchema: z.object({}),
       execute: async () => {
         return ctx.runMutation(internal.agents.actions.checkInventory, { agentId });
       },
@@ -152,7 +151,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     explore: tool({
       description: "Move to a random area to discover new resources or meet people.",
-      parameters: z.object({
+      inputSchema: z.object({
         direction: z.enum(["north", "south", "east", "west"]).describe("General direction to explore"),
       }),
       execute: async ({ direction }) => {
@@ -175,7 +174,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     formAlliance: tool({
       description: "Found a new alliance/group with a name. You become the first member.",
-      parameters: z.object({
+      inputSchema: z.object({
         name: z.string().describe("Name for the alliance"),
       }),
       execute: async ({ name }) => {
@@ -185,7 +184,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     inviteToAlliance: tool({
       description: "Invite a nearby person to join your alliance.",
-      parameters: z.object({
+      inputSchema: z.object({
         targetName: z.string().describe("Person to invite"),
         allianceName: z.string().describe("Alliance to invite them to"),
       }),
@@ -200,7 +199,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     proposeRule: tool({
       description: "Propose a new rule or norm for your alliance. Members will vote on it.",
-      parameters: z.object({
+      inputSchema: z.object({
         allianceName: z.string().describe("Alliance to propose the rule for"),
         rule: z.string().describe("The rule to propose"),
       }),
@@ -215,7 +214,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     proposeTrade: tool({
       description: "Propose a trade to a nearby person. Offer items from your inventory in exchange for theirs.",
-      parameters: z.object({
+      inputSchema: z.object({
         targetName: z.string().describe("Person to trade with"),
         offerType: z.string().describe("Item type you are offering"),
         offerQuantity: z.number().describe("How many you are offering"),
@@ -236,7 +235,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
 
     respondToTrade: tool({
       description: "Accept or reject the most recent pending trade offer you received.",
-      parameters: z.object({
+      inputSchema: z.object({
         accept: z.boolean().describe("true to accept, false to reject"),
       }),
       execute: async ({ accept }) => {
@@ -315,7 +314,7 @@ export const think = internalAction({
         system: systemPrompt,
         prompt: "What do you want to do right now? Think briefly, then act.",
         tools,
-        maxSteps: 3,
+        stopWhen: stepCountIs(3),
       });
 
       if (result.text) {
@@ -347,7 +346,7 @@ export const reflect = internalAction({
     });
     if (!agent) return;
 
-    const world = await ctx.runQuery(internal.world.getState, {});
+    const world = await ctx.runQuery(internal.world.getStateInternal, {});
     const tick = world?.tick ?? 0;
 
     const lastReflectionTick = await ctx.runQuery(
@@ -378,7 +377,7 @@ export const reflect = internalAction({
       const result = await generateText({
         model: openai("gpt-4o-mini"),
         prompt: buildReflectionPrompt(agent.name, recentMemories),
-        maxSteps: 1,
+        stopWhen: stepCountIs(1),
       });
 
       const reflections = result.text

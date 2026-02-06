@@ -8,6 +8,7 @@
     "moduleResolution": "Bundler",
     "module": "ESNext",
     "noEmit": true,
+    "skipLibCheck": true,
     "jsx": "react-jsx"
   },
   "include": ["./**/*"],
