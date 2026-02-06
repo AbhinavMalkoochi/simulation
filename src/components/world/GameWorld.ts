@@ -227,6 +227,13 @@ export class GameWorld {
     for (const sprite of this.agentSprites.values()) {
       sprite.container.x += (sprite.targetX - sprite.container.x) * lerp;
       sprite.container.y += (sprite.targetY - sprite.container.y) * lerp;
+
+      if (sprite.statusLabel.visible && sprite.statusLabel.alpha > 0) {
+        sprite.statusLabel.alpha -= 0.005;
+        if (sprite.statusLabel.alpha <= 0) {
+          sprite.statusLabel.visible = false;
+        }
+      }
     }
   }
 
