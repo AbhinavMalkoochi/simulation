@@ -54,7 +54,33 @@ export const getThinkingContext = internalQuery({
         Math.abs(b.posY - agent.position.y) <= 5,
     );
 
-    return { agent, world, memories, nearbyAgents, pendingConversations, nearbyResources, inventory, nearbyBuildings };
+    const relationships = await ctx.db
+      .query("relationships")
+      .withIndex("by_agent", (q) => q.eq("agentId", agentId))
+      .collect();
+
+    const alliances = await ctx.db.query("alliances").collect();
+    const myAlliances = alliances.filter((a) => a.memberIds.includes(agentId));
+
+    const pendingProposals = await ctx.db
+      .query("proposals")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
+    const myPendingProposals = pendingProposals.filter((p) =>
+      myAlliances.some((a) => a._id === p.allianceId) &&
+      !p.votes.find((v) => v.agentId === agentId),
+    );
+
+    const pendingTrades = await ctx.db
+      .query("trades")
+      .withIndex("by_responder", (q) => q.eq("responderId", agentId))
+      .collect()
+      .then((trades) => trades.filter((t) => t.status === "pending"));
+
+    return {
+      agent, world, memories, nearbyAgents, pendingConversations, nearbyResources,
+      inventory, nearbyBuildings, relationships, myAlliances, myPendingProposals, pendingTrades,
+    };
   },
 });
 

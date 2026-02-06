@@ -42,3 +42,15 @@ export const getInventory = query({
       .collect();
   },
 });
+
+export const getAlliances = query({
+  handler: async (ctx) => {
+    return ctx.db.query("alliances").collect();
+  },
+});
+
+export const getRelationships = query({
+  handler: async (ctx) => {
+    return ctx.db.query("relationships").collect();
+  },
+});

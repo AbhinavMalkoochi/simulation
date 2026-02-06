@@ -63,6 +63,13 @@ function formatTime(t: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+type InventoryItem = { itemType: string; quantity: number };
+type NearbyBuilding = { type: string; posX: number; posY: number };
+type Relationship = { targetAgentId: string; trust: number; affinity: number };
+type Alliance = { name: string; memberIds: string[]; rules: string[] };
+type PendingProposal = { _id: string; content: string; allianceName?: string };
+type PendingTrade = { offer: Array<{ itemType: string; quantity: number }>; request: Array<{ itemType: string; quantity: number }>; initiatorName?: string };
+
 interface BuildPromptArgs {
   agent: {
     name: string;
@@ -79,12 +86,23 @@ interface BuildPromptArgs {
   nearbyAgents: NearbyAgent[];
   nearbyResources: NearbyResource[];
   pendingConversations: Conversation[];
+  inventory: InventoryItem[];
+  nearbyBuildings: NearbyBuilding[];
+  relationships: Relationship[];
+  myAlliances: Alliance[];
+  pendingProposals: PendingProposal[];
+  pendingTrades: PendingTrade[];
   timeOfDay: number;
+  weather: string;
   tick: number;
 }
 
 export function buildSystemPrompt(args: BuildPromptArgs): string {
-  const { agent, memories, nearbyAgents, nearbyResources, pendingConversations, timeOfDay, tick } = args;
+  const {
+    agent, memories, nearbyAgents, nearbyResources, pendingConversations,
+    inventory, nearbyBuildings, relationships, myAlliances, pendingProposals, pendingTrades,
+    timeOfDay, weather, tick,
+  } = args;
 
   const personalityDesc = describePersonality(agent.personality);
   const mood = describeMood(agent.emotion.valence, agent.emotion.arousal);
@@ -140,11 +158,19 @@ YOUR INVENTORY:
 ${inventory.length > 0 ? inventory.map((i) => `- ${i.quantity} ${i.itemType}`).join("\n") : "Empty."}
 
 WEATHER: ${weather}
+
+YOUR RELATIONSHIPS:
+${relationships.length > 0 ? relationships.map((r) => `- Agent ${r.targetAgentId}: trust ${r.trust.toFixed(2)}, affinity ${r.affinity.toFixed(2)}`).join("\n") : "No established relationships."}
+
+YOUR ALLIANCES:
+${myAlliances.length > 0 ? myAlliances.map((a) => `- "${a.name}" (${a.memberIds.length} members)${a.rules.length > 0 ? ` Rules: ${a.rules.join("; ")}` : ""}`).join("\n") : "None."}
+${pendingProposals.length > 0 ? `\nPENDING PROPOSALS TO VOTE ON:\n${pendingProposals.map((p) => `- "${p.content}" (in ${p.allianceName ?? "unknown alliance"})`).join("\n")}` : ""}
+${pendingTrades.length > 0 ? `\nPENDING TRADE OFFERS:\n${pendingTrades.map((t) => `- ${t.initiatorName ?? "Someone"} offers ${t.offer.map((o) => `${o.quantity} ${o.itemType}`).join(", ")} for ${t.request.map((r) => `${r.quantity} ${r.itemType}`).join(", ")}`).join("\n")}` : ""}
 ${convSection}
 YOUR MEMORIES (most relevant first):
 ${memoryLines || "No memories yet."}
 
-Decide what to do next. Consider your personality, energy level, and what would be most interesting or useful right now. Use the available tools to take action. Be concise in your reasoning.`;
+Decide what to do next. Consider your personality, relationships, alliances, and what would be most interesting or useful. Use the available tools to take action. Be concise.`;
 }
 
 export function buildReflectionPrompt(

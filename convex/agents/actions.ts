@@ -2,6 +2,9 @@ import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { generateMap, isWalkable } from "../lib/mapgen";
 import { findPath } from "../engine/pathfinding";
+import { addItem, removeItem, hasItems, getInventory } from "../world/inventory";
+import { findRecipe, BUILDING_COSTS } from "../world/recipes";
+import { updateRelationship } from "../social/relationships";
 
 export const moveAgent = internalMutation({
   args: {
@@ -364,6 +367,9 @@ export const giveItem = internalMutation({
 
     const world = await ctx.db.query("worldState").first();
     const tick = world?.tick ?? 0;
+
+    await updateRelationship(ctx, agentId, target._id, 0.1, 0.12, tick);
+    await updateRelationship(ctx, target._id, agentId, 0.15, 0.1, tick);
 
     await ctx.db.insert("memories", {
       agentId: target._id,

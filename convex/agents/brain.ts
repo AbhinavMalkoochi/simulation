@@ -7,7 +7,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import { buildSystemPrompt, buildReflectionPrompt } from "./prompts";
 import { scoreMemories } from "./memory";
-import type { Id, Doc } from "../_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
 
 function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
@@ -172,6 +172,80 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
         });
       },
     }),
+
+    formAlliance: tool({
+      description: "Found a new alliance/group with a name. You become the first member.",
+      parameters: z.object({
+        name: z.string().describe("Name for the alliance"),
+      }),
+      execute: async ({ name }) => {
+        return ctx.runMutation(internal.social.alliances.create, { founderId: agentId, name });
+      },
+    }),
+
+    inviteToAlliance: tool({
+      description: "Invite a nearby person to join your alliance.",
+      parameters: z.object({
+        targetName: z.string().describe("Person to invite"),
+        allianceName: z.string().describe("Alliance to invite them to"),
+      }),
+      execute: async ({ targetName, allianceName }) => {
+        return ctx.runMutation(internal.social.alliances.invite, {
+          inviterId: agentId,
+          targetName,
+          allianceName,
+        });
+      },
+    }),
+
+    proposeRule: tool({
+      description: "Propose a new rule or norm for your alliance. Members will vote on it.",
+      parameters: z.object({
+        allianceName: z.string().describe("Alliance to propose the rule for"),
+        rule: z.string().describe("The rule to propose"),
+      }),
+      execute: async ({ allianceName, rule }) => {
+        return ctx.runMutation(internal.social.alliances.proposeRule, {
+          proposerId: agentId,
+          allianceName,
+          content: rule,
+        });
+      },
+    }),
+
+    proposeTrade: tool({
+      description: "Propose a trade to a nearby person. Offer items from your inventory in exchange for theirs.",
+      parameters: z.object({
+        targetName: z.string().describe("Person to trade with"),
+        offerType: z.string().describe("Item type you are offering"),
+        offerQuantity: z.number().describe("How many you are offering"),
+        requestType: z.string().describe("Item type you want in return"),
+        requestQuantity: z.number().describe("How many you want"),
+      }),
+      execute: async ({ targetName, offerType, offerQuantity, requestType, requestQuantity }) => {
+        return ctx.runMutation(internal.social.trading.propose, {
+          initiatorId: agentId,
+          targetName,
+          offerType,
+          offerQty: Math.round(offerQuantity),
+          requestType,
+          requestQty: Math.round(requestQuantity),
+        });
+      },
+    }),
+
+    respondToTrade: tool({
+      description: "Accept or reject the most recent pending trade offer you received.",
+      parameters: z.object({
+        accept: z.boolean().describe("true to accept, false to reject"),
+      }),
+      execute: async ({ accept }) => {
+        return ctx.runMutation(internal.social.trading.respond, {
+          responderId: agentId,
+          accept,
+        });
+      },
+    }),
   };
 }
 
@@ -184,8 +258,17 @@ export const think = internalAction({
     );
     if (!context || !context.world) return;
 
-    const { agent, world, memories, nearbyAgents, pendingConversations, nearbyResources } = context;
+    const {
+      agent, world, memories, nearbyAgents, pendingConversations, nearbyResources,
+      inventory, nearbyBuildings, relationships, myAlliances, myPendingProposals, pendingTrades,
+    } = context;
     const tick = world.tick;
+
+    const agentNames = new Map<string, string>();
+    for (const r of relationships) {
+      const target = await ctx.runQuery(internal.agents.queries.getById, { agentId: r.targetAgentId as typeof agentId });
+      if (target) agentNames.set(r.targetAgentId, target.name);
+    }
 
     const scored = scoreMemories(memories, tick);
 
@@ -201,6 +284,24 @@ export const think = internalAction({
       pendingConversations,
       inventory: inventory.map((i) => ({ itemType: i.itemType, quantity: i.quantity })),
       nearbyBuildings: nearbyBuildings.map((b) => ({ type: b.type, posX: b.posX, posY: b.posY })),
+      relationships: relationships.map((r) => ({
+        targetAgentId: agentNames.get(r.targetAgentId) ?? r.targetAgentId,
+        trust: r.trust,
+        affinity: r.affinity,
+      })),
+      myAlliances: myAlliances.map((a) => ({
+        name: a.name,
+        memberIds: a.memberIds.map(String),
+        rules: a.rules,
+      })),
+      pendingProposals: myPendingProposals.map((p) => ({
+        _id: p._id as string,
+        content: p.content,
+      })),
+      pendingTrades: pendingTrades.map((t) => ({
+        offer: t.offer,
+        request: t.request,
+      })),
       timeOfDay: world.timeOfDay,
       weather: world.weather,
       tick,
