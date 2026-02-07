@@ -77,9 +77,26 @@ export const getThinkingContext = internalQuery({
       .collect();
     const pendingTrades = allTrades.filter((t) => t.status === "pending");
 
+    // Check for storehouse inventory if near an alliance storehouse
+    let storehouseInventory: Array<{ itemType: string; quantity: number }> = [];
+    if (myAlliances.length > 0) {
+      const allianceIds = new Set(myAlliances.map((a) => a._id));
+      const nearbyStorehouse = nearbyBuildings.find(
+        (b) => b.type === "storehouse" && b.condition > 0 && b.allianceId && allianceIds.has(b.allianceId),
+      );
+      if (nearbyStorehouse) {
+        const items = await ctx.db
+          .query("buildingInventory")
+          .withIndex("by_building", (q) => q.eq("buildingId", nearbyStorehouse._id))
+          .collect();
+        storehouseInventory = items.map((i) => ({ itemType: i.itemType, quantity: i.quantity }));
+      }
+    }
+
     return {
       agent, world, memories, nearbyAgents, pendingConversations, nearbyResources,
       inventory, nearbyBuildings, relationships, myAlliances, myPendingProposals, pendingTrades,
+      storehouseInventory,
     };
   },
 });

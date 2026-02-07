@@ -35,6 +35,7 @@ export const ask = action({
       pendingProposals: [],
       pendingTrades: [],
       lastSightings: [],
+      storehouseInventory: [],
       timeOfDay: world.timeOfDay,
       weather: world.weather,
       tick,

@@ -264,6 +264,36 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
       },
     }),
 
+    depositToStorehouse: tool({
+      description: "Deposit items from your inventory into a nearby alliance storehouse. Must be within 2 tiles of a storehouse owned by your alliance.",
+      inputSchema: z.object({
+        itemType: z.string().describe("Type of item to deposit"),
+        quantity: z.number().describe("How many to deposit"),
+      }),
+      execute: async ({ itemType, quantity }) => {
+        return ctx.runMutation(internal.agents.actions.depositToStorehouse, {
+          agentId,
+          itemType,
+          quantity: Math.round(quantity),
+        });
+      },
+    }),
+
+    withdrawFromStorehouse: tool({
+      description: "Withdraw items from a nearby alliance storehouse into your inventory.",
+      inputSchema: z.object({
+        itemType: z.string().describe("Type of item to withdraw"),
+        quantity: z.number().describe("How many to withdraw"),
+      }),
+      execute: async ({ itemType, quantity }) => {
+        return ctx.runMutation(internal.agents.actions.withdrawFromStorehouse, {
+          agentId,
+          itemType,
+          quantity: Math.round(quantity),
+        });
+      },
+    }),
+
     confront: tool({
       description: "Confront a nearby agent about a grievance (territory dispute, resource theft, broken promise, etc.). This damages your relationship.",
       inputSchema: z.object({
@@ -430,6 +460,7 @@ export const think = internalAction({
         request: t.request,
       })),
       lastSightings,
+      storehouseInventory: storehouseInventory ?? [],
       timeOfDay: world.timeOfDay,
       weather: world.weather,
       tick,

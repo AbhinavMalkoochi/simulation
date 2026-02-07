@@ -484,6 +484,104 @@ export const checkInventory = internalMutation({
   },
 });
 
+// --- Shared Storage (Tier 3) ---
+
+export const depositToStorehouse = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    itemType: v.string(),
+    quantity: v.number(),
+  },
+  handler: async (ctx, { agentId, itemType, quantity }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    const alliances = await ctx.db.query("alliances").collect();
+    const myAlliance = alliances.find((a) => a.memberIds.includes(agentId));
+    if (!myAlliance) return "You are not in an alliance.";
+
+    const buildings = await ctx.db.query("buildings").collect();
+    const storehouse = buildings.find(
+      (b) =>
+        b.type === "storehouse" &&
+        b.condition > 0 &&
+        b.allianceId === myAlliance._id &&
+        Math.abs(b.posX - agent.position.x) <= 2 &&
+        Math.abs(b.posY - agent.position.y) <= 2,
+    );
+    if (!storehouse) return "No alliance storehouse nearby. Build or go to one.";
+
+    const removed = await removeItem(ctx, agentId, itemType, quantity);
+    if (!removed) return `You don't have ${quantity} ${itemType}.`;
+
+    const existing = await ctx.db
+      .query("buildingInventory")
+      .withIndex("by_building_item", (q) =>
+        q.eq("buildingId", storehouse._id).eq("itemType", itemType),
+      )
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { quantity: existing.quantity + quantity });
+    } else {
+      await ctx.db.insert("buildingInventory", {
+        buildingId: storehouse._id,
+        itemType,
+        quantity,
+      });
+    }
+
+    return `Deposited ${quantity} ${itemType} into the storehouse.`;
+  },
+});
+
+export const withdrawFromStorehouse = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    itemType: v.string(),
+    quantity: v.number(),
+  },
+  handler: async (ctx, { agentId, itemType, quantity }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    const alliances = await ctx.db.query("alliances").collect();
+    const myAlliance = alliances.find((a) => a.memberIds.includes(agentId));
+    if (!myAlliance) return "You are not in an alliance.";
+
+    const buildings = await ctx.db.query("buildings").collect();
+    const storehouse = buildings.find(
+      (b) =>
+        b.type === "storehouse" &&
+        b.condition > 0 &&
+        b.allianceId === myAlliance._id &&
+        Math.abs(b.posX - agent.position.x) <= 2 &&
+        Math.abs(b.posY - agent.position.y) <= 2,
+    );
+    if (!storehouse) return "No alliance storehouse nearby.";
+
+    const existing = await ctx.db
+      .query("buildingInventory")
+      .withIndex("by_building_item", (q) =>
+        q.eq("buildingId", storehouse._id).eq("itemType", itemType),
+      )
+      .first();
+
+    if (!existing || existing.quantity < quantity) {
+      return `Storehouse doesn't have ${quantity} ${itemType}.`;
+    }
+
+    if (existing.quantity === quantity) {
+      await ctx.db.delete(existing._id);
+    } else {
+      await ctx.db.patch(existing._id, { quantity: existing.quantity - quantity });
+    }
+
+    await addItem(ctx, agentId, itemType, quantity);
+    return `Withdrew ${quantity} ${itemType} from the storehouse.`;
+  },
+});
+
 // --- Conflict Mechanics (Tier 3) ---
 
 export const confrontAgent = internalMutation({

@@ -108,6 +108,7 @@ interface BuildPromptArgs {
   pendingProposals: PendingProposal[];
   pendingTrades: PendingTrade[];
   lastSightings: LastSighting[];
+  storehouseInventory: InventoryItem[];
   timeOfDay: number;
   weather: string;
   tick: number;
@@ -117,7 +118,7 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
   const {
     agent, memories, nearbyAgents, nearbyResources, pendingConversations,
     inventory, nearbyBuildings, relationships, myAlliances, pendingProposals, pendingTrades,
-    lastSightings, timeOfDay, weather, tick,
+    lastSightings, storehouseInventory, timeOfDay, weather, tick,
   } = args;
 
   const personalityDesc = describePersonality(agent.personality);
@@ -172,7 +173,7 @@ ${nearbyBuildings.length > 0 ? nearbyBuildings.map((b) => `- ${b.type} at (${b.p
 
 YOUR INVENTORY:
 ${inventory.length > 0 ? inventory.map((i) => `- ${i.quantity} ${i.itemType}`).join("\n") : "Empty."}
-
+${storehouseInventory.length > 0 ? `\nALLIANCE STOREHOUSE (nearby):\n${storehouseInventory.map((i) => `- ${i.quantity} ${i.itemType}`).join("\n")}` : ""}
 WEATHER: ${weather}
 
 YOUR RELATIONSHIPS:
