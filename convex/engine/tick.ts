@@ -148,7 +148,7 @@ export const run = internalMutation({
       const nextSeason = SEASON_ORDER[(currentIdx + 1) % 4];
       await ctx.db.patch(world._id, { season: nextSeason });
       await ctx.db.insert("worldEvents", {
-        type: "world_created",
+        type: "god_action",
         description: `The season has changed to ${nextSeason}.`,
         involvedAgentIds: [],
         tick: newTick,

@@ -734,17 +734,17 @@ Markov chain weather transitions:
 - storm → storm(30%), rain(50%), clear(20%)
 - fog → fog(40%), clear(50%), rain(10%)
 
-**Note:** This function is defined but NOT currently called in the tick handler. Weather only changes via God Mode.
+**Called** in `tick.ts` every 10 ticks. Transitions weather automatically via Markov chain.
 
 #### `regenerateResources(ctx)`
 Increments all resource quantities by their `regenRate`, capped at `maxQuantity`.
 
-**Note:** Defined but NOT called in the tick handler.
+**Called** in `tick.ts` every 5 ticks.
 
 #### `applyBuildingEffects(ctx)`
 Farms with condition > 0 produce food: either increment existing food resource at farm position, or create new food resource (quantity 1, maxQuantity 10, regenRate 0.5).
 
-**Note:** Defined but NOT called in the tick handler.
+**Called** in `tick.ts` every 10 ticks.
 
 ---
 
@@ -1245,54 +1245,36 @@ All agents start with: energy=100, emotion={valence: 0.5, arousal: 0.3}, status=
 
 ### Bugs
 
-1. **`GameWorld.ts` animateAgents — `sprite.statusLabel` undefined:**
-   - Line 231 references `sprite.statusLabel.visible` and `sprite.statusLabel.alpha`
-   - The `AgentSprite` interface only has `label` (name label), not `statusLabel`
-   - This will throw a runtime error on every animation frame
-   - **Fix:** Either add `statusLabel` to AgentSprite interface and create it in `createAgentSprite`, or remove the statusLabel fade logic
+1. ~~**`GameWorld.ts` animateAgents — `sprite.statusLabel` undefined** (FIXED)~~
 
-2. **`Sidebar.tsx` — GodMode tab unreachable:**
-   - Line 143 checks `activeTab === "god"` but "god" is not in the `TABS` array
-   - `GodMode` component is not imported in Sidebar.tsx
-   - The God tab is completely inaccessible from the UI
-   - **Fix:** Add `{ id: "god", label: "God" }` to TABS array and import GodMode
+2. ~~**`Sidebar.tsx` — GodMode tab unreachable** (FIXED)~~ — God tab now included in TABS array, GodMode imported
 
-3. **`InterviewChat.tsx` — not rendered anywhere:**
-   - The component exists but is not imported or rendered in any parent component
-   - Was intended to appear inside AgentInspector
-   - **Fix:** Import in Sidebar.tsx or AgentInspector.tsx and render conditionally
+3. ~~**`InterviewChat.tsx` — not rendered anywhere** (FIXED)~~ — Now rendered inside AgentInspector
 
-### Missing Implementations
+4. **`GameWorld.ts` — Race condition: `agentContainer is undefined` (FIXED):**
+   - Public update methods could be called before async `init()` completed
+   - Root cause: `worldRef` set before init resolves; data-driven effect fires early
+   - **Fix applied:** Added `_initialized` guard to all public methods, replaced `!` assertions with explicit `| null = null`
 
-4. **Weather transitions not automated:**
-   - `nextWeather()` in `systems.ts` is defined but never called in `tick.ts`
-   - Weather only changes via God Mode
-   - **Fix:** Call `nextWeather` periodically in tick handler (e.g., every 10 ticks)
+5. **`GameWorld.ts` — `_cancelResize is not a function` (FIXED):**
+   - PixiJS 8 internal resize observer cleanup failed during React StrictMode double-mount
+   - **Fix applied:** Wrapped `app.destroy()` calls in try-catch
 
-5. **Resource regeneration not active:**
-   - `regenerateResources()` in `systems.ts` is defined but never called
-   - Resources only deplete, never regrow
-   - **Fix:** Call in tick handler (e.g., every 5 ticks)
+### Resolved Implementations (previously listed as missing)
 
-6. **Building effects not active:**
-   - `applyBuildingEffects()` in `systems.ts` is defined but never called
-   - Farms don't produce food as intended
-   - **Fix:** Call in tick handler (e.g., every 10 ticks)
+- ~~**Weather transitions**~~ — Now called in `tick.ts` every 10 ticks via `nextWeather()`
+- ~~**Resource regeneration**~~ — Now called in `tick.ts` every 5 ticks via `regenerateResources()`
+- ~~**Building effects**~~ — Now called in `tick.ts` every 10 ticks via `applyBuildingEffects()`
+- ~~**Season transitions**~~ — Now transitions every 192 ticks in `tick.ts`
+- ~~**`updateResources`, `updateBuildings`, `updateTimeOfDay` incomplete**~~ — All now fully implemented in `GameWorld.ts` with resourceLayer, buildingLayer, and dayNightOverlay
 
-7. **Vector embeddings unused:**
+### Remaining Technical Debt
+
+6. **Vector embeddings unused:**
    - Memory schema supports 1536-dim embeddings + vector index
    - No code generates or queries embeddings
    - Memories are retrieved by agent index + time-based scoring only
    - **Potential enhancement:** Use OpenAI embeddings API to enable semantic memory search
-
-8. **Season never changes:**
-   - `season` field in worldState is set to "spring" on init and never modified
-   - No season transition logic exists
-
-9. **`updateResources`, `updateBuildings`, `updateTimeOfDay`, `updateWeather` methods:**
-   - Called in `WorldCanvas.tsx` but not fully implemented in `GameWorld.ts`
-   - The class doesn't have `resourceLayer`, `buildingLayer`, `dayNightOverlay`, or `weatherOverlay` containers
-   - `getDarkness()` method exists but isn't called
 
 ### Performance Considerations
 
@@ -1350,5 +1332,5 @@ All agents start with: energy=100, emotion={valence: 0.5, arousal: 0.3}, status=
 
 ---
 
-*Last updated: February 5, 2026*
+*Last updated: February 6, 2026*
 *Git remote: https://github.com/AbhinavMalkoochi/simulation.git*

@@ -71,11 +71,11 @@ export const getThinkingContext = internalQuery({
       !p.votes.find((v) => v.agentId === agentId),
     );
 
-    const pendingTrades = await ctx.db
+    const allTrades = await ctx.db
       .query("trades")
       .withIndex("by_responder", (q) => q.eq("responderId", agentId))
-      .collect()
-      .then((trades) => trades.filter((t) => t.status === "pending"));
+      .collect();
+    const pendingTrades = allTrades.filter((t) => t.status === "pending");
 
     return {
       agent, world, memories, nearbyAgents, pendingConversations, nearbyResources,

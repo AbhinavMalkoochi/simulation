@@ -379,13 +379,13 @@ export const reflect = internalAction({
 
     if (importance < 80) return;
 
-    const memories = await ctx.runQuery(
+    const context = await ctx.runQuery(
       internal.agents.queries.getThinkingContext,
       { agentId },
     );
-    if (!memories) return;
+    if (!context) return;
 
-    const recentMemories = memories.memories
+    const recentMemories = context.memories
       .filter((m) => m.tick > lastReflectionTick && m.type !== "reflection")
       .slice(0, 15);
 

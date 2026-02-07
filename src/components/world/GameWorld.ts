@@ -52,14 +52,14 @@ const BUILDING_COLORS: Record<string, number> = {
 };
 
 export class GameWorld {
-  private app!: Application;
-  private worldContainer!: Container;
-  private tileGraphics!: Graphics;
-  private gridGraphics!: Graphics;
-  private resourceLayer!: Graphics;
-  private buildingLayer!: Graphics;
-  private agentContainer!: Container;
-  private dayNightOverlay!: Graphics;
+  private app: Application | null = null;
+  private worldContainer: Container | null = null;
+  private tileGraphics: Graphics | null = null;
+  private gridGraphics: Graphics | null = null;
+  private resourceLayer: Graphics | null = null;
+  private buildingLayer: Graphics | null = null;
+  private agentContainer: Container | null = null;
+  private dayNightOverlay: Graphics | null = null;
   private agentSprites = new Map<string, AgentSprite>();
 
   private camera = { x: 0, y: 0, zoom: 1 };
@@ -88,7 +88,7 @@ export class GameWorld {
 
     // If destroy() was called while init was awaiting, tear down immediately
     if (this._destroyed) {
-      this.app.destroy(true, { children: true });
+      try { this.app.destroy(true, { children: true }); } catch { /* PixiJS partially initialized */ }
       return;
     }
 
@@ -122,6 +122,7 @@ export class GameWorld {
   }
 
   setMap(seed: number, width: number, height: number, tileSize: number): void {
+    if (!this._initialized) return;
     this.mapWidth = width;
     this.mapHeight = height;
     this.tileSize = tileSize;
@@ -137,11 +138,12 @@ export class GameWorld {
   }
 
   updateAgents(agents: AgentSpriteData[]): void {
+    if (!this._initialized) return;
     const currentIds = new Set(agents.map((a) => a._id));
 
     for (const [id, sprite] of this.agentSprites) {
       if (!currentIds.has(id)) {
-        this.agentContainer.removeChild(sprite.container);
+        this.agentContainer!.removeChild(sprite.container);
         sprite.container.destroy({ children: true });
         this.agentSprites.delete(id);
       }
@@ -164,7 +166,9 @@ export class GameWorld {
   }
 
   updateResources(resources: ResourceData[]): void {
-    this.resourceLayer.clear();
+    if (!this._initialized) return;
+    const layer = this.resourceLayer!;
+    layer.clear();
     const half = this.tileSize / 2;
     const dotRadius = this.tileSize * 0.15;
 
@@ -173,14 +177,14 @@ export class GameWorld {
       const color = RESOURCE_COLORS[res.type] ?? 0xffffff;
       const cx = res.tileX * this.tileSize + half;
       const cy = res.tileY * this.tileSize + half;
-      this.resourceLayer
-        .circle(cx, cy, dotRadius)
-        .fill({ color, alpha: 0.7 });
+      layer.circle(cx, cy, dotRadius).fill({ color, alpha: 0.7 });
     }
   }
 
   updateBuildings(buildings: BuildingData[]): void {
-    this.buildingLayer.clear();
+    if (!this._initialized) return;
+    const layer = this.buildingLayer!;
+    layer.clear();
     const pad = this.tileSize * 0.1;
     const size = this.tileSize - pad * 2;
 
@@ -188,7 +192,7 @@ export class GameWorld {
       const color = BUILDING_COLORS[bld.type] ?? 0xaaaaaa;
       const bx = bld.posX * this.tileSize + pad;
       const by = bld.posY * this.tileSize + pad;
-      this.buildingLayer
+      layer
         .rect(bx, by, size, size)
         .fill({ color, alpha: 0.6 })
         .rect(bx, by, size, size)
@@ -197,19 +201,20 @@ export class GameWorld {
   }
 
   updateTimeOfDay(timeOfDay: number): void {
+    if (!this._initialized) return;
+    const overlay = this.dayNightOverlay!;
     const darkness = this.getDarkness(timeOfDay);
-    this.dayNightOverlay.clear();
+    overlay.clear();
     if (darkness > 0) {
       const totalW = this.mapWidth * this.tileSize;
       const totalH = this.mapHeight * this.tileSize;
-      this.dayNightOverlay
-        .rect(0, 0, totalW, totalH)
-        .fill({ color: 0x000022, alpha: darkness });
+      overlay.rect(0, 0, totalW, totalH).fill({ color: 0x000022, alpha: darkness });
     }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   updateWeather(_weather: string): void {
+    if (!this._initialized) return;
     // Weather visual effects can be added here in the future
   }
 
@@ -217,38 +222,34 @@ export class GameWorld {
     this._destroyed = true;
     this._abortController.abort();
     if (this._initialized) {
-      this.app.destroy(true, { children: true });
+      try { this.app!.destroy(true, { children: true }); } catch { /* PixiJS cleanup may fail during teardown */ }
     }
   }
 
   private renderTiles(mapTiles: number[]): void {
-    this.tileGraphics.clear();
+    const gfx = this.tileGraphics!;
+    gfx.clear();
     for (let y = 0; y < this.mapHeight; y++) {
       for (let x = 0; x < this.mapWidth; x++) {
         const tileType = mapTiles[y * this.mapWidth + x];
         const color = TILE_COLORS[tileType] ?? 0x000000;
-        this.tileGraphics
-          .rect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize)
-          .fill(color);
+        gfx.rect(x * this.tileSize, y * this.tileSize, this.tileSize, this.tileSize).fill(color);
       }
     }
   }
 
   private renderGrid(): void {
-    this.gridGraphics.clear();
+    const gfx = this.gridGraphics!;
+    gfx.clear();
     const totalW = this.mapWidth * this.tileSize;
     const totalH = this.mapHeight * this.tileSize;
 
     for (let x = 0; x <= this.mapWidth; x++) {
-      this.gridGraphics
-        .moveTo(x * this.tileSize, 0)
-        .lineTo(x * this.tileSize, totalH)
+      gfx.moveTo(x * this.tileSize, 0).lineTo(x * this.tileSize, totalH)
         .stroke({ color: 0x000000, width: 0.5, alpha: 0.15 });
     }
     for (let y = 0; y <= this.mapHeight; y++) {
-      this.gridGraphics
-        .moveTo(0, y * this.tileSize)
-        .lineTo(totalW, y * this.tileSize)
+      gfx.moveTo(0, y * this.tileSize).lineTo(totalW, y * this.tileSize)
         .stroke({ color: 0x000000, width: 0.5, alpha: 0.15 });
     }
   }
@@ -287,7 +288,7 @@ export class GameWorld {
     const py = agent.position.y * this.tileSize + this.tileSize / 2;
     container.position.set(px, py);
 
-    this.agentContainer.addChild(container);
+    this.agentContainer!.addChild(container);
 
     return { container, body, statusDot, label, targetX: px, targetY: py };
   }
@@ -328,11 +329,11 @@ export class GameWorld {
   }
 
   private updateCamera(): void {
-    const w = this.app.screen.width;
-    const h = this.app.screen.height;
-    this.worldContainer.scale.set(this.camera.zoom);
-    this.worldContainer.x = -this.camera.x * this.camera.zoom + w / 2;
-    this.worldContainer.y = -this.camera.y * this.camera.zoom + h / 2;
+    const { width: w, height: h } = this.app!.screen;
+    const wc = this.worldContainer!;
+    wc.scale.set(this.camera.zoom);
+    wc.x = -this.camera.x * this.camera.zoom + w / 2;
+    wc.y = -this.camera.y * this.camera.zoom + h / 2;
   }
 
   private getDarkness(timeOfDay: number): number {
