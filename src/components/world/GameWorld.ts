@@ -379,7 +379,7 @@ export class GameWorld {
       if (event.type === "conversation" && event.involvedAgentIds.length >= 1) {
         const match = event.description.match(/said to .+?: "(.+?)"/);
         if (match) {
-          this.showSpeechBubble(event.involvedAgentIds[0], match[1]);
+          this.showSpeechBubble(event.involvedAgentIds[0], match[1], 7000);
         }
       }
 
@@ -508,8 +508,12 @@ export class GameWorld {
 
     bubbleContainer.addChild(bg);
     bubbleContainer.addChild(bubbleText);
-    bubbleContainer.x = sprite.container.x - bgWidth / 2;
-    bubbleContainer.y = sprite.container.y - this.tileSize * 1.2 - bgHeight - 6;
+
+    // Position and clamp within map bounds
+    const maxX = this.mapWidth * this.tileSize;
+    const maxY = this.mapHeight * this.tileSize;
+    bubbleContainer.x = Math.max(2, Math.min(maxX - bgWidth - 2, sprite.container.x - bgWidth / 2));
+    bubbleContainer.y = Math.max(2, Math.min(maxY - bgHeight - 2, sprite.container.y - this.tileSize * 1.2 - bgHeight - 6));
 
     this.speechBubbleLayer.addChild(bubbleContainer);
     this.speechBubbles.set(agentId, {
@@ -1045,17 +1049,17 @@ export class GameWorld {
 
   private animateSpeechBubbles(): void {
     const now = performance.now();
+    const maxX = this.mapWidth * this.tileSize;
+    const maxY = this.mapHeight * this.tileSize;
     for (const [agentId, bubble] of this.speechBubbles) {
       const elapsed = now - bubble.createdAt;
       const sprite = this.agentSprites.get(agentId);
       if (sprite) {
         const bgWidth = bubble.container.width;
-        bubble.container.x = sprite.container.x - bgWidth / 2;
-        bubble.container.y =
-          sprite.container.y -
-          this.tileSize * 1.2 -
-          bubble.container.height -
-          6;
+        const bgHeight = bubble.container.height;
+        bubble.container.x = Math.max(2, Math.min(maxX - bgWidth - 2, sprite.container.x - bgWidth / 2));
+        bubble.container.y = Math.max(2, Math.min(maxY - bgHeight - 2,
+          sprite.container.y - this.tileSize * 1.2 - bgHeight - 6));
       }
 
       if (elapsed > bubble.duration - 500) {

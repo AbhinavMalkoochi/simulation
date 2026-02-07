@@ -1,62 +1,58 @@
-import { useState } from "react";
 import type { WorldEvent } from "../../types";
 
 interface ActivityFeedProps {
   events: WorldEvent[];
   visible: boolean;
+  hidden: boolean;
+  onToggle: () => void;
 }
 
 const MAX_EVENTS = 12;
 
-const TYPE_COLOR: Record<string, string> = {
-  conversation: "bg-blue-400",
-  gather: "bg-emerald-400",
-  craft: "bg-amber-400",
-  build: "bg-orange-400",
-  trade: "bg-yellow-400",
-  gift: "bg-rose-400",
-  alliance: "bg-purple-400",
-  governance: "bg-violet-400",
-  god_action: "bg-neutral-400",
+const TYPE_ICON: Record<string, string> = {
+  conversation: "💬",
+  gather: "🌿",
+  craft: "🔨",
+  build: "🏗",
+  trade: "🤝",
+  gift: "🎁",
+  alliance: "⚔️",
+  governance: "🗳",
+  god_action: "⚡",
+  conflict: "😤",
+  territory: "🚩",
 };
 
-function EventRow({ event }: { event: WorldEvent }) {
-  const [expanded, setExpanded] = useState(false);
-  const isLong = event.description.length > 55;
-  const preview = isLong ? event.description.slice(0, 53) + "…" : event.description;
+const TYPE_COLOR: Record<string, string> = {
+  conversation: "bg-blue-500",
+  gather: "bg-emerald-500",
+  craft: "bg-amber-500",
+  build: "bg-orange-500",
+  trade: "bg-yellow-500",
+  gift: "bg-rose-500",
+  alliance: "bg-purple-500",
+  governance: "bg-violet-500",
+  god_action: "bg-neutral-500",
+  conflict: "bg-red-500",
+  territory: "bg-cyan-500",
+};
 
-  return (
-    <div className="flex items-start gap-2 py-[3px] px-3 group">
-      <div className={`w-[5px] h-[5px] rounded-full mt-[5px] shrink-0 opacity-80 ${TYPE_COLOR[event.type] ?? "bg-neutral-300"}`} />
-      <div className="flex-1 min-w-0">
-        <span className="text-[10.5px] leading-snug text-neutral-500">
-          {expanded ? event.description : preview}
-        </span>
-        {isLong && (
-          <button
-            onClick={() => setExpanded((v) => !v)}
-            className="text-[9px] text-neutral-300 hover:text-neutral-500 ml-1 cursor-pointer transition-colors"
-          >
-            {expanded ? "less" : "more"}
-          </button>
-        )}
-      </div>
-    </div>
-  );
+function truncateEvent(description: string, maxLen = 70): string {
+  return description.length > maxLen
+    ? description.slice(0, maxLen - 1) + "…"
+    : description;
 }
 
-export function ActivityFeed({ events, visible }: ActivityFeedProps) {
-  const [hidden, setHidden] = useState(false);
-
+export function ActivityFeed({ events, visible, hidden, onToggle }: ActivityFeedProps) {
   if (!visible || hidden) {
     return visible ? (
       <button
-        onClick={() => setHidden(false)}
-        className="absolute bottom-4 left-4 z-10 flex items-center gap-1.5 px-3 py-1.5 bg-white/70 backdrop-blur-xl rounded-full text-[10px] font-medium text-neutral-400 hover:text-neutral-600 hover:bg-white/85 transition-all cursor-pointer shadow-sm shadow-black/5 border border-white/40"
+        onClick={onToggle}
+        className="absolute bottom-4 left-4 z-10 flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-xl rounded-full text-xs font-medium text-neutral-600 hover:text-neutral-800 hover:bg-white/90 transition-all cursor-pointer shadow-md shadow-black/8 border border-white/50"
       >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-          <circle cx="5" cy="5" r="3.5" />
-          <circle cx="5" cy="5" r="1" fill="currentColor" />
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <circle cx="6" cy="6" r="4" />
+          <circle cx="6" cy="6" r="1.5" fill="currentColor" />
         </svg>
         Events
       </button>
@@ -70,28 +66,36 @@ export function ActivityFeed({ events, visible }: ActivityFeedProps) {
   if (recentEvents.length === 0) return null;
 
   return (
-    <div className="absolute bottom-4 left-4 z-10 w-[240px] max-h-[28vh] flex flex-col bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg shadow-black/6 border border-white/40 overflow-hidden animate-fade-in">
+    <div className="absolute bottom-4 left-4 z-10 w-[280px] max-h-[32vh] flex flex-col bg-white/85 backdrop-blur-xl rounded-2xl shadow-lg shadow-black/10 border border-white/50 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-1.5 shrink-0">
-        <span className="text-[9px] font-semibold text-neutral-400/80 uppercase tracking-[0.12em]">Events</span>
+      <div className="flex items-center justify-between px-3.5 py-2 shrink-0">
+        <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">Live Events</span>
         <button
-          onClick={() => setHidden(true)}
-          className="text-neutral-300 hover:text-neutral-500 transition-colors cursor-pointer p-0.5 -mr-0.5"
+          onClick={onToggle}
+          className="text-neutral-400 hover:text-neutral-700 transition-colors cursor-pointer p-1 -mr-1 rounded-md hover:bg-neutral-100"
           title="Hide"
         >
-          <svg width="9" height="9" viewBox="0 0 9 9" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round">
-            <path d="M1.5 1.5l6 6M7.5 1.5l-6 6" />
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <path d="M2 2l8 8M10 2l-8 8" />
           </svg>
         </button>
       </div>
 
       {/* Divider */}
-      <div className="h-px bg-neutral-200/30 mx-2" />
+      <div className="h-px bg-neutral-200/50 mx-3" />
 
       {/* Scrollable list */}
-      <div className="overflow-y-auto flex-1 py-1">
+      <div className="overflow-y-auto flex-1 py-1.5">
         {recentEvents.map((event) => (
-          <EventRow key={event._id} event={event} />
+          <div key={event._id} className="flex items-start gap-2.5 py-1 px-3.5 hover:bg-neutral-50/50 transition-colors">
+            <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${TYPE_COLOR[event.type] ?? "bg-neutral-400"}`} />
+            <div className="flex-1 min-w-0">
+              <span className="text-[12px] leading-relaxed text-neutral-700">
+                {TYPE_ICON[event.type] ? `${TYPE_ICON[event.type]} ` : ""}
+                {truncateEvent(event.description)}
+              </span>
+            </div>
+          </div>
         ))}
       </div>
     </div>

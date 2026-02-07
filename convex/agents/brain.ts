@@ -608,25 +608,29 @@ export const respondToConversation = internalAction({
     agentId: v.id("agents"),
     conversationId: v.id("conversations"),
   },
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   handler: async (ctx, { agentId, conversationId }) => {
     const agent = await ctx.runQuery(internal.agents.queries.getById, { agentId });
     if (!agent) return;
 
-    // Don't interrupt agents that are busy
-    if (agent.status !== "idle" && agent.status !== "talking") return;
+    // Only sleeping agents are unavailable for conversation responses
+    if (agent.status === "sleeping") return;
 
     const world = await ctx.runQuery(internal.world.getStateInternal, {});
     const tick = world?.tick ?? 0;
 
-    // Get conversation to see what was said
+    // Get conversation to see what was said — use the specific conversationId first
     const context = await ctx.runQuery(internal.agents.queries.getThinkingContext, { agentId });
     if (!context) return;
 
-    const conv = context.pendingConversations.find((c) => {
-      // Match by checking messages — the conversation from context that's active
-      return c.participantIds.includes(agentId);
-    });
+    // Find the specific conversation by ID, fallback to any active conversation with this agent
+    let conv = context.pendingConversations.find((c) =>
+      String((c as Record<string, unknown>)._id) === String(conversationId),
+    );
+    if (!conv) {
+      conv = context.pendingConversations.find((c) =>
+        c.participantIds.includes(String(agentId)),
+      );
+    }
     if (!conv || conv.messages.length === 0) return;
 
     // Cap exchanges to prevent runaway LLM costs

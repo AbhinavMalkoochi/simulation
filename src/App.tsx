@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { WorldCanvas } from "./components/world/WorldCanvas";
 import { ActivityFeed } from "./components/world/ActivityFeed";
+import { ConversationLog } from "./components/world/ConversationLog";
 import { Sidebar } from "./components/panels/Sidebar";
 import { Toolbar } from "./components/ui/Toolbar";
 
@@ -19,6 +20,7 @@ export function App() {
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [directorMode, setDirectorMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activityFeedHidden, setActivityFeedHidden] = useState(false);
 
   const directorAgentId = (() => {
     if (!directorMode || !agents?.length || !worldState) return null;
@@ -88,7 +90,13 @@ export function App() {
             weather={worldState.weather}
             onAgentSelect={setSelectedAgentId}
           />
-          <ActivityFeed events={events ?? []} visible={!sidebarOpen} />
+          <ActivityFeed
+            events={events ?? []}
+            visible={!sidebarOpen}
+            hidden={activityFeedHidden}
+            onToggle={() => setActivityFeedHidden((h) => !h)}
+          />
+          <ConversationLog events={events ?? []} agents={agents ?? []} />
         </div>
         {sidebarOpen && (
           <Sidebar
