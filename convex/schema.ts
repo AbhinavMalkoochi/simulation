@@ -79,16 +79,10 @@ export default defineSchema({
     ),
     content: v.string(),
     importance: v.number(),
-    embedding: v.optional(v.array(v.float64())),
     tick: v.number(),
   })
     .index("by_agent", ["agentId"])
-    .index("by_agent_type", ["agentId", "type"])
-    .vectorIndex("by_embedding", {
-      vectorField: "embedding",
-      dimensions: 1536,
-      filterFields: ["agentId"],
-    }),
+    .index("by_agent_type", ["agentId", "type"]),
 
   relationships: defineTable({
     agentId: v.id("agents"),

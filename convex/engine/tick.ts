@@ -141,6 +141,20 @@ export const run = internalMutation({
       await applyBuildingEffects(ctx);
     }
 
+    // Season transition every 192 ticks (~4 in-game days)
+    if (newTick % 192 === 0 && newTick > 0) {
+      const SEASON_ORDER = ["spring", "summer", "autumn", "winter"] as const;
+      const currentIdx = SEASON_ORDER.indexOf(world.season);
+      const nextSeason = SEASON_ORDER[(currentIdx + 1) % 4];
+      await ctx.db.patch(world._id, { season: nextSeason });
+      await ctx.db.insert("worldEvents", {
+        type: "world_created",
+        description: `The season has changed to ${nextSeason}.`,
+        involvedAgentIds: [],
+        tick: newTick,
+      });
+    }
+
     if (newTick % 20 === 0) {
       await ctx.db.insert("worldEvents", {
         type: "tick_summary",

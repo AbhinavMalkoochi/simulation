@@ -53,7 +53,7 @@ export function GodMode() {
         <button
           onClick={async () => {
             if (confirm("This will destroy the current world. Continue?")) {
-              await resetWorld();
+              await resetWorld({});
               await seedWorld();
             }
           }}

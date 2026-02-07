@@ -1,6 +1,12 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
+function checkAdmin(secret: string): boolean {
+  const expected = process.env.ADMIN_SECRET;
+  if (!expected) return true; // If no secret configured, allow all (dev mode)
+  return secret === expected;
+}
+
 export const changeWeather = mutation({
   args: {
     weather: v.union(
@@ -9,8 +15,10 @@ export const changeWeather = mutation({
       v.literal("storm"),
       v.literal("fog"),
     ),
+    adminSecret: v.optional(v.string()),
   },
-  handler: async (ctx, { weather }) => {
+  handler: async (ctx, { weather, adminSecret }) => {
+    if (!checkAdmin(adminSecret ?? "")) return;
     const state = await ctx.db.query("worldState").first();
     if (!state) return;
     await ctx.db.patch(state._id, { weather });
@@ -35,22 +43,28 @@ export const spawnResource = mutation({
       v.literal("herbs"),
     ),
     quantity: v.number(),
+    adminSecret: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, { tileX, tileY, type, quantity, adminSecret }) => {
+    if (!checkAdmin(adminSecret ?? "")) return;
     await ctx.db.insert("resources", {
-      tileX: args.tileX,
-      tileY: args.tileY,
-      type: args.type,
-      quantity: args.quantity,
-      maxQuantity: args.quantity * 2,
+      tileX,
+      tileY,
+      type,
+      quantity,
+      maxQuantity: quantity * 2,
       regenRate: 0.2,
     });
   },
 });
 
 export const setSpeed = mutation({
-  args: { paused: v.boolean() },
-  handler: async (ctx, { paused }) => {
+  args: {
+    paused: v.boolean(),
+    adminSecret: v.optional(v.string()),
+  },
+  handler: async (ctx, { paused, adminSecret }) => {
+    if (!checkAdmin(adminSecret ?? "")) return;
     const state = await ctx.db.query("worldState").first();
     if (!state) return;
     await ctx.db.patch(state._id, { paused });
@@ -58,7 +72,11 @@ export const setSpeed = mutation({
 });
 
 export const resetWorld = mutation({
-  handler: async (ctx) => {
+  args: {
+    adminSecret: v.optional(v.string()),
+  },
+  handler: async (ctx, { adminSecret }) => {
+    if (!checkAdmin(adminSecret ?? "")) return;
     const tables = ["agents", "memories", "relationships", "resources", "inventory",
       "buildings", "alliances", "proposals", "trades", "conversations", "worldEvents", "worldState"] as const;
 

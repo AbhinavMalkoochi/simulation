@@ -30,7 +30,10 @@ export function WorldCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<GameWorld | null>(null);
   const onAgentSelectRef = useRef(onAgentSelect);
-  onAgentSelectRef.current = onAgentSelect;
+
+  useEffect(() => {
+    onAgentSelectRef.current = onAgentSelect;
+  });
 
   useEffect(() => {
     const el = containerRef.current;
