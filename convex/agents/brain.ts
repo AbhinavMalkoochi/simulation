@@ -628,7 +628,7 @@ export const respondToConversation = internalAction({
     );
     if (!conv) {
       conv = context.pendingConversations.find((c) =>
-        c.participantIds.includes(String(agentId)),
+        c.participantIds.some((id) => String(id) === String(agentId)),
       );
     }
     if (!conv || conv.messages.length === 0) return;
