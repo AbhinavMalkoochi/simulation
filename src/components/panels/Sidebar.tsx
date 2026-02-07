@@ -6,6 +6,7 @@ import { AgentInspector } from "./AgentInspector";
 import { SocialGraph } from "./SocialGraph";
 import { EconomyDashboard } from "./EconomyDashboard";
 import { Newspaper } from "./Newspaper";
+import { StoryNarrator } from "./StoryNarrator";
 import { GodMode } from "./GodMode";
 import { STATUS_BADGE, agentColorHex } from "../../types";
 import type { AgentDoc, WorldEvent } from "../../types";
@@ -22,6 +23,7 @@ const TABS = [
   { id: "social", label: "Social" },
   { id: "economy", label: "Econ" },
   { id: "news", label: "News" },
+  { id: "story", label: "Story" },
   { id: "god", label: "God" },
 ] as const;
 
@@ -98,6 +100,8 @@ export function Sidebar({ selectedAgent, agents, events, onAgentSelect }: Sideba
         {activeTab === "economy" && <EconomyDashboard stats={economyStats} />}
 
         {activeTab === "news" && <Newspaper data={newspaper} />}
+
+        {activeTab === "story" && <StoryNarrator />}
 
         {activeTab === "god" && <GodMode />}
       </div>
