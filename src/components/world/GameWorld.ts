@@ -83,10 +83,10 @@ const ACTION_LABEL_STYLE = new TextStyle({
 const STATUS_ICONS: Record<string, { symbol: string; color: number }> = {
   idle: { symbol: "·", color: 0x94a3b8 },
   moving: { symbol: "→", color: 0x4ade80 },
-  talking: { symbol: "💬", color: 0x60a5fa },
-  working: { symbol: "⚒", color: 0xfbbf24 },
-  sleeping: { symbol: "💤", color: 0x818cf8 },
-  exploring: { symbol: "🔍", color: 0xf472b6 },
+  talking: { symbol: "T", color: 0x60a5fa },
+  working: { symbol: "W", color: 0xfbbf24 },
+  sleeping: { symbol: "z", color: 0x818cf8 },
+  exploring: { symbol: "?", color: 0xf472b6 },
 };
 
 const RESOURCE_COLORS: Record<string, number> = {
@@ -471,24 +471,26 @@ export class GameWorld {
 
     const bubbleContainer = new Container();
     const truncated =
-      message.length > 80 ? message.slice(0, 77) + "..." : message;
+      message.length > 100 ? message.slice(0, 97) + "..." : message;
 
     const bubbleText = new Text({
       text: truncated,
       style: new TextStyle({
-        fontSize: 8,
+        fontSize: 10,
         fill: 0x1e293b,
         fontFamily: "Inter, sans-serif",
+        fontWeight: "500",
         wordWrap: true,
-        wordWrapWidth: 140,
-        lineHeight: 11,
+        wordWrapWidth: 180,
+        lineHeight: 14,
+        letterSpacing: 0.2,
       }),
     });
-    bubbleText.x = 8;
-    bubbleText.y = 6;
+    bubbleText.x = 10;
+    bubbleText.y = 8;
 
-    const bgWidth = Math.min(156, bubbleText.width + 16);
-    const bgHeight = bubbleText.height + 12;
+    const bgWidth = Math.min(200, Math.max(120, bubbleText.width + 20));
+    const bgHeight = bubbleText.height + 16;
 
     const bg = new Graphics();
     bg.roundRect(0, 0, bgWidth, bgHeight, 6).fill({

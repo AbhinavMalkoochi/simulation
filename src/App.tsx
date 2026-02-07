@@ -88,7 +88,12 @@ export function App() {
             tileSize={worldState.tileSize}
             timeOfDay={worldState.timeOfDay}
             weather={worldState.weather}
-            onAgentSelect={setSelectedAgentId}
+            onAgentSelect={(id) => {
+              setSelectedAgentId(id);
+              if (id !== null) {
+                setSidebarOpen(true);
+              }
+            }}
           />
           <ActivityFeed
             events={events ?? []}

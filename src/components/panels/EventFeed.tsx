@@ -1,23 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { MessageSquare, Handshake, Sword, Vote, Building2, Sprout, Hammer, Gift, Zap, Globe, AlertCircle, Flag } from "lucide-react";
 import type { WorldEvent } from "../../types";
 
 interface EventFeedProps {
   events: WorldEvent[];
 }
 
-const TYPE_ICON: Record<string, string> = {
-  conversation: "💬",
-  trade: "🤝",
-  alliance: "⚔️",
-  governance: "🗳",
-  build: "🏗",
-  gather: "🌿",
-  craft: "🔨",
-  gift: "🎁",
-  god_action: "⚡",
-  world_created: "🌍",
-  conflict: "😤",
-  territory: "🚩",
+const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  conversation: MessageSquare,
+  trade: Handshake,
+  alliance: Sword,
+  governance: Vote,
+  build: Building2,
+  gather: Sprout,
+  craft: Hammer,
+  gift: Gift,
+  god_action: Zap,
+  world_created: Globe,
+  conflict: AlertCircle,
+  territory: Flag,
 };
 
 const TYPE_DOT: Record<string, string> = {
@@ -46,10 +47,17 @@ const FILTER_OPTIONS = [
 
 export function EventFeed({ events }: EventFeedProps) {
   const [filter, setFilter] = useState("all");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = filter === "all"
     ? events.filter((e) => e.type !== "tick_summary")
     : events.filter((e) => e.type === filter);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [filtered]);
 
   return (
     <div className="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0">
@@ -68,19 +76,26 @@ export function EventFeed({ events }: EventFeedProps) {
           </button>
         ))}
       </div>
-      <div className="flex flex-col gap-1 overflow-y-auto">
+      <div ref={scrollRef} className="flex flex-col gap-1 overflow-y-auto">
         {filtered.length === 0 && (
           <p className="text-xs text-neutral-400 italic py-2">No events match this filter</p>
         )}
-        {filtered.map((event) => (
-          <div key={event._id} className="flex items-start gap-2 py-0.5">
-            <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${TYPE_DOT[event.type] ?? "bg-neutral-400"}`} />
-            <span className="text-[12px] text-neutral-700 leading-relaxed">
-              {TYPE_ICON[event.type] ? `${TYPE_ICON[event.type]} ` : ""}
-              {event.description}
-            </span>
-          </div>
-        ))}
+        {filtered.map((event) => {
+          const IconComponent = TYPE_ICON[event.type];
+          return (
+            <div key={event._id} className="flex items-start gap-2 py-0.5">
+              <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${TYPE_DOT[event.type] ?? "bg-neutral-400"}`} />
+              <div className="flex items-start gap-1.5 flex-1 min-w-0">
+                {IconComponent && (
+                  <IconComponent className="w-3 h-3 mt-0.5 shrink-0 text-neutral-500 flex-shrink-0" />
+                )}
+                <span className="text-[12px] text-neutral-700 leading-relaxed">
+                  {event.description}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

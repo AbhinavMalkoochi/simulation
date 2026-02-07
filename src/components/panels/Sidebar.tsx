@@ -9,7 +9,7 @@ import { Newspaper } from "./Newspaper";
 import { StoryNarrator } from "./StoryNarrator";
 import { GodMode } from "./GodMode";
 import { WorldOverview } from "./WorldOverview";
-import { agentColorHex } from "../../types";
+import { AgentAvatar } from "../ui/AgentAvatar";
 import type { AgentDoc, WorldEvent } from "../../types";
 
 interface SidebarProps {
@@ -102,10 +102,7 @@ export function Sidebar({ selectedAgent, agents, events, worldState, buildingCou
                 onClick={() => onAgentSelect(agent._id)}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-50 transition-colors text-left cursor-pointer group"
               >
-                <div
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: agentColorHex(agent.spriteSeed) }}
-                />
+                <AgentAvatar spriteSeed={agent.spriteSeed} size={24} className="shrink-0" />
                 <span className="text-sm text-neutral-800 flex-1 font-medium">{agent.name}</span>
                 <span className="text-[11px] text-neutral-400 tabular-nums">{Math.round(agent.energy)}%</span>
                 <span className="text-[10px] text-neutral-400">

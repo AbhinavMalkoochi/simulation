@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+import { MessageSquare, Sprout, Hammer, Building2, Handshake, Gift, Sword, Vote, Zap, AlertCircle, Flag } from "lucide-react";
 import type { WorldEvent } from "../../types";
 
 interface ActivityFeedProps {
@@ -9,18 +11,18 @@ interface ActivityFeedProps {
 
 const MAX_EVENTS = 12;
 
-const TYPE_ICON: Record<string, string> = {
-  conversation: "💬",
-  gather: "🌿",
-  craft: "🔨",
-  build: "🏗",
-  trade: "🤝",
-  gift: "🎁",
-  alliance: "⚔️",
-  governance: "🗳",
-  god_action: "⚡",
-  conflict: "😤",
-  territory: "🚩",
+const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
+  conversation: MessageSquare,
+  gather: Sprout,
+  craft: Hammer,
+  build: Building2,
+  trade: Handshake,
+  gift: Gift,
+  alliance: Sword,
+  governance: Vote,
+  god_action: Zap,
+  conflict: AlertCircle,
+  territory: Flag,
 };
 
 const TYPE_COLOR: Record<string, string> = {
@@ -44,6 +46,18 @@ function truncateEvent(description: string, maxLen = 70): string {
 }
 
 export function ActivityFeed({ events, visible, hidden, onToggle }: ActivityFeedProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const recentEvents = events
+    .filter((e) => e.type !== "tick_summary" && e.type !== "world_created" && e.type !== "conversation")
+    .slice(0, MAX_EVENTS);
+
+  useEffect(() => {
+    if (scrollRef.current && visible && !hidden) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [recentEvents, visible, hidden]);
+
   if (!visible || hidden) {
     return visible ? (
       <button
@@ -58,10 +72,6 @@ export function ActivityFeed({ events, visible, hidden, onToggle }: ActivityFeed
       </button>
     ) : null;
   }
-
-  const recentEvents = events
-    .filter((e) => e.type !== "tick_summary" && e.type !== "world_created")
-    .slice(0, MAX_EVENTS);
 
   if (recentEvents.length === 0) return null;
 
@@ -85,18 +95,23 @@ export function ActivityFeed({ events, visible, hidden, onToggle }: ActivityFeed
       <div className="h-px bg-neutral-200/50 mx-3" />
 
       {/* Scrollable list */}
-      <div className="overflow-y-auto flex-1 py-1.5">
-        {recentEvents.map((event) => (
-          <div key={event._id} className="flex items-start gap-2.5 py-1 px-3.5 hover:bg-neutral-50/50 transition-colors">
-            <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${TYPE_COLOR[event.type] ?? "bg-neutral-400"}`} />
-            <div className="flex-1 min-w-0">
-              <span className="text-[12px] leading-relaxed text-neutral-700">
-                {TYPE_ICON[event.type] ? `${TYPE_ICON[event.type]} ` : ""}
-                {truncateEvent(event.description)}
-              </span>
+      <div ref={scrollRef} className="overflow-y-auto flex-1 py-1.5">
+        {recentEvents.map((event) => {
+          const IconComponent = TYPE_ICON[event.type];
+          return (
+            <div key={event._id} className="flex items-start gap-2.5 py-1 px-3.5 hover:bg-neutral-50/50 transition-colors">
+              <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${TYPE_COLOR[event.type] ?? "bg-neutral-400"}`} />
+              <div className="flex-1 min-w-0 flex items-start gap-1.5">
+                {IconComponent && (
+                  <IconComponent className="w-3 h-3 mt-0.5 shrink-0 text-neutral-500" />
+                )}
+                <span className="text-[12px] leading-relaxed text-neutral-700">
+                  {truncateEvent(event.description)}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -137,9 +137,9 @@ function buildUrgencySection(energy: number, inventory: InventoryItem[], nearbyB
   const lines: string[] = [];
 
   if (energy < 15) {
-    lines.push("🚨 CRITICAL: You are starving! Eat food, craft a meal, or rest IMMEDIATELY. You will collapse soon.");
+    lines.push("[CRITICAL] You are starving! Eat food, craft a meal, or rest IMMEDIATELY. You will collapse soon.");
   } else if (energy < 30) {
-    lines.push("⚠️ WARNING: Your energy is dangerously low. Find food, eat, or rest before doing anything else.");
+    lines.push("[WARNING] Your energy is dangerously low. Find food, eat, or rest before doing anything else.");
   } else if (energy < 50) {
     lines.push("Your energy is getting low. Consider eating or resting soon.");
   }

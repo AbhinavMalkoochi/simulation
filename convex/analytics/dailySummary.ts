@@ -1,4 +1,9 @@
-import { internalAction, internalMutation, internalQuery, query } from "../_generated/server";
+import {
+  internalAction,
+  internalMutation,
+  internalQuery,
+  query,
+} from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { generateText, stepCountIs } from "ai";
@@ -14,10 +19,13 @@ export const generateWorldDaySummary = internalAction({
     const dayEndTick = day * TICKS_PER_DAY;
 
     // Get events via worldState query and filter by tick range
-    const allEvents = await ctx.runQuery(internal.analytics.dailySummary.getDayEvents, {
-      startTick: dayStartTick,
-      endTick: dayEndTick,
-    });
+    const allEvents = await ctx.runQuery(
+      internal.analytics.dailySummary.getDayEvents,
+      {
+        startTick: dayStartTick,
+        endTick: dayEndTick,
+      },
+    );
 
     if (allEvents.length < 3) return;
 
@@ -35,17 +43,54 @@ export const generateWorldDaySummary = internalAction({
 
     // Build a condensed event summary for the LLM
     const eventSummary = [
-      conversations.length > 0 ? `${conversations.length} conversations took place. Notable: ${conversations.slice(0, 5).map((e) => e.description).join("; ")}` : null,
-      gathers.length > 0 ? `${gathers.length} resource gathering events: ${gathers.slice(0, 3).map((e) => e.description).join("; ")}` : null,
-      crafts.length > 0 ? `${crafts.length} items crafted: ${crafts.slice(0, 3).map((e) => e.description).join("; ")}` : null,
-      builds.length > 0 ? `${builds.length} structures built: ${builds.map((e) => e.description).join("; ")}` : null,
-      trades.length > 0 ? `${trades.length} trade events: ${trades.slice(0, 3).map((e) => e.description).join("; ")}` : null,
-      gifts.length > 0 ? `${gifts.length} gifts exchanged: ${gifts.slice(0, 3).map((e) => e.description).join("; ")}` : null,
-      allianceEvents.length > 0 ? `Alliance activity: ${allianceEvents.map((e) => e.description).join("; ")}` : null,
-      governance.length > 0 ? `Governance: ${governance.map((e) => e.description).join("; ")}` : null,
-      conflicts.length > 0 ? `Conflicts: ${conflicts.map((e) => e.description).join("; ")}` : null,
-      territory.length > 0 ? `Territory claims: ${territory.map((e) => e.description).join("; ")}` : null,
-    ].filter(Boolean).join("\n");
+      conversations.length > 0
+        ? `${conversations.length} conversations took place. Notable: ${conversations
+            .slice(0, 5)
+            .map((e) => e.description)
+            .join("; ")}`
+        : null,
+      gathers.length > 0
+        ? `${gathers.length} resource gathering events: ${gathers
+            .slice(0, 3)
+            .map((e) => e.description)
+            .join("; ")}`
+        : null,
+      crafts.length > 0
+        ? `${crafts.length} items crafted: ${crafts
+            .slice(0, 3)
+            .map((e) => e.description)
+            .join("; ")}`
+        : null,
+      builds.length > 0
+        ? `${builds.length} structures built: ${builds.map((e) => e.description).join("; ")}`
+        : null,
+      trades.length > 0
+        ? `${trades.length} trade events: ${trades
+            .slice(0, 3)
+            .map((e) => e.description)
+            .join("; ")}`
+        : null,
+      gifts.length > 0
+        ? `${gifts.length} gifts exchanged: ${gifts
+            .slice(0, 3)
+            .map((e) => e.description)
+            .join("; ")}`
+        : null,
+      allianceEvents.length > 0
+        ? `Alliance activity: ${allianceEvents.map((e) => e.description).join("; ")}`
+        : null,
+      governance.length > 0
+        ? `Governance: ${governance.map((e) => e.description).join("; ")}`
+        : null,
+      conflicts.length > 0
+        ? `Conflicts: ${conflicts.map((e) => e.description).join("; ")}`
+        : null,
+      territory.length > 0
+        ? `Territory claims: ${territory.map((e) => e.description).join("; ")}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const prompt = `You are a narrator for a wilderness survival simulation where 10 AI agents live together. Write a compelling, human-readable daily summary for Day ${day}.
 
@@ -77,7 +122,7 @@ HEADLINE: [headline]
       });
 
       if (result.text) {
-        await ctx.runMutation(internal.analytics.dailySummary.storeDaySummary, {
+        await ctx.runAction(internal.analytics.dailySummary.storeDaySummary, {
           day,
           content: result.text.slice(0, 2000),
           tick,
@@ -85,7 +130,10 @@ HEADLINE: [headline]
         });
       }
     } catch (error) {
-      console.error(`World day summary generation failed for day ${day}:`, error);
+      console.error(
+        `World day summary generation failed for day ${day}:`,
+        error,
+      );
     }
   },
 });
@@ -101,7 +149,8 @@ export const getDayEvents = internalQuery({
       .take(500);
 
     return events.filter(
-      (e) => e.tick >= startTick && e.tick < endTick && e.type !== "tick_summary",
+      (e) =>
+        e.tick >= startTick && e.tick < endTick && e.type !== "tick_summary",
     );
   },
 });
@@ -115,12 +164,15 @@ export const storeDaySummary = internalAction({
     eventCount: v.number(),
   },
   handler: async (ctx, { day, content, tick, eventCount }) => {
-    await ctx.runMutation(internal.analytics.dailySummary.insertDaySummaryEvent, {
-      day,
-      content,
-      tick,
-      eventCount,
-    });
+    await ctx.runMutation(
+      internal.analytics.dailySummary.insertDaySummaryEvent,
+      {
+        day,
+        content,
+        tick,
+        eventCount,
+      },
+    );
   },
 });
 
@@ -151,7 +203,9 @@ export const getDailySummaries = query({
       .take(10);
 
     return events.map((e) => {
-      const match = e.description.match(/^\[Day (\d+) Summary \| (\d+) events\]\n([\s\S]+)$/);
+      const match = e.description.match(
+        /^\[Day (\d+) Summary \| (\d+) events\]\n([\s\S]+)$/,
+      );
       if (match) {
         return {
           _id: e._id,

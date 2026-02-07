@@ -1,7 +1,7 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { agentColorHex } from "../../types";
 import { InterviewChat } from "./InterviewChat";
+import { AgentAvatar } from "../ui/AgentAvatar";
 import type { AgentDoc } from "../../types";
 
 const TRAIT_LABELS: Record<string, string> = {
@@ -52,17 +52,12 @@ export function AgentInspector({ agent, onClose }: { agent: AgentDoc; onClose: (
   const reputations = useQuery(api.world.getReputations);
   const agentReputation = reputations?.find((r) => r.agentId === agent._id);
 
-  const color = agentColorHex(agent.spriteSeed);
-
   return (
     <div className="flex flex-col gap-4 overflow-y-auto p-4">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-full shrink-0"
-            style={{ backgroundColor: color }}
-          />
+          <AgentAvatar spriteSeed={agent.spriteSeed} size={32} className="shrink-0" />
           <div>
             <h3 className="text-base font-semibold text-neutral-900">{agent.name}</h3>
             <span className="text-xs text-neutral-500">
