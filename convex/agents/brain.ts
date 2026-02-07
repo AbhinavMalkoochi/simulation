@@ -332,6 +332,18 @@ export const think = internalAction({
     } = context;
     const tick = world.tick;
 
+    // Record sightings of nearby agents for last-seen-location memory
+    if (nearbyAgents.length > 0) {
+      await ctx.runMutation(internal.agents.actions.updateSightings, {
+        agentId,
+        sightings: nearbyAgents.map((a) => ({
+          targetId: a._id as typeof agentId,
+          position: a.position,
+        })),
+        tick,
+      });
+    }
+
     const agentNames = new Map<string, string>();
     for (const r of relationships) {
       const target = await ctx.runQuery(internal.agents.queries.getById, { agentId: r.targetAgentId as typeof agentId });
@@ -339,6 +351,17 @@ export const think = internalAction({
     }
 
     const scored = scoreMemories(memories, tick);
+
+    // Build last-sighting data from relationships (only those not currently visible)
+    const nearbyIds = new Set(nearbyAgents.map((a) => String(a._id)));
+    const lastSightings = relationships
+      .filter((r) => r.lastSeenPosition && r.lastSeenTick && !nearbyIds.has(r.targetAgentId))
+      .map((r) => ({
+        name: agentNames.get(r.targetAgentId) ?? r.targetAgentId,
+        position: r.lastSeenPosition!,
+        ticksAgo: tick - (r.lastSeenTick ?? 0),
+      }))
+      .filter((s) => s.ticksAgo < 200);
 
     const systemPrompt = buildSystemPrompt({
       agent: { ...agent, _id: String(agentId), planSteps: agent.planSteps ?? undefined, planStep: agent.planStep ?? undefined },
@@ -370,6 +393,7 @@ export const think = internalAction({
         offer: t.offer,
         request: t.request,
       })),
+      lastSightings,
       timeOfDay: world.timeOfDay,
       weather: world.weather,
       tick,

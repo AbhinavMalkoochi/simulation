@@ -440,6 +440,42 @@ export const checkInventory = internalMutation({
   },
 });
 
+// --- Sightings (Tier 1) ---
+
+export const updateSightings = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    sightings: v.array(v.object({
+      targetId: v.id("agents"),
+      position: v.object({ x: v.number(), y: v.number() }),
+    })),
+    tick: v.number(),
+  },
+  handler: async (ctx, { agentId, sightings, tick }) => {
+    for (const { targetId, position } of sightings) {
+      const existing = await ctx.db
+        .query("relationships")
+        .withIndex("by_pair", (q) => q.eq("agentId", agentId).eq("targetAgentId", targetId))
+        .first();
+
+      if (existing) {
+        await ctx.db.patch(existing._id, { lastSeenPosition: position, lastSeenTick: tick });
+      } else {
+        await ctx.db.insert("relationships", {
+          agentId,
+          targetAgentId: targetId,
+          trust: 0,
+          affinity: 0,
+          interactionCount: 0,
+          lastInteractionTick: tick,
+          lastSeenPosition: position,
+          lastSeenTick: tick,
+        });
+      }
+    }
+  },
+});
+
 // --- Seek Agent (Tier 1) ---
 
 export const seekAgentAction = internalMutation({

@@ -78,6 +78,7 @@ function formatPlanSection(agent: {
 type InventoryItem = { itemType: string; quantity: number };
 type NearbyBuilding = { type: string; posX: number; posY: number };
 type Relationship = { targetAgentId: string; trust: number; affinity: number };
+type LastSighting = { name: string; position: { x: number; y: number }; ticksAgo: number };
 type Alliance = { name: string; memberIds: string[]; rules: string[] };
 type PendingProposal = { _id: string; content: string; allianceName?: string };
 type PendingTrade = { offer: Array<{ itemType: string; quantity: number }>; request: Array<{ itemType: string; quantity: number }>; initiatorName?: string };
@@ -106,6 +107,7 @@ interface BuildPromptArgs {
   myAlliances: Alliance[];
   pendingProposals: PendingProposal[];
   pendingTrades: PendingTrade[];
+  lastSightings: LastSighting[];
   timeOfDay: number;
   weather: string;
   tick: number;
@@ -115,7 +117,7 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
   const {
     agent, memories, nearbyAgents, nearbyResources, pendingConversations,
     inventory, nearbyBuildings, relationships, myAlliances, pendingProposals, pendingTrades,
-    timeOfDay, weather, tick,
+    lastSightings, timeOfDay, weather, tick,
   } = args;
 
   const personalityDesc = describePersonality(agent.personality);
@@ -162,7 +164,7 @@ ${formatPlanSection(agent)}
 NEARBY PEOPLE:
 ${nearbyAgentLines}
 
-NEARBY RESOURCES:
+${lastSightings.length > 0 ? `PEOPLE YOU REMEMBER SEEING:\n${lastSightings.map((s) => `- ${s.name} last seen at (${s.position.x}, ${s.position.y}) — ${s.ticksAgo} ticks ago`).join("\n")}\n` : ""}NEARBY RESOURCES:
 ${resourceLines}
 
 NEARBY BUILDINGS:
