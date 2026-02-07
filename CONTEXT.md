@@ -1332,5 +1332,123 @@ All agents start with: energy=100, emotion={valence: 0.5, arousal: 0.3}, status=
 
 ---
 
+---
+
+## 15. Feature Tiers (Added February 2026)
+
+### Tier 1: Agent Vitality
+
+**T1.1 Conversation Trust** — Already implemented. `speakTo` in `convex/agents/actions.ts` updates trust (+0.03) and affinity (+0.05) bidirectionally.
+
+**T1.2 Multi-Step Plan Lock** — Agents can commit to structured multi-step plans that persist across think cycles.
+- Schema: `agents.planSteps` (array), `agents.planStep` (index), `agents.planStartTick`
+- Mutations: `commitToPlan`, `advancePlanStep`, `abandonPlan` in `convex/agents/actions.ts`
+- Tools: `commitToPlan`, `advancePlanStep`, `abandonPlan` in `convex/agents/brain.ts`
+- Prompt: ACTIVE PLAN section shows step progress with [done]/[CURRENT]/[ ] markers
+- Tick: Agents with locked plans don't wander randomly
+
+**T1.3 Seek Agent Tool** — Agents can deliberately move toward a specific person.
+- Uses target's current position if within perception range (6 tiles)
+- Falls back to `lastSeenPosition` from relationship record
+- Mutation: `seekAgentAction` in `convex/agents/actions.ts`
+
+**T1.4 Last Seen Location Memory** — Agents remember where they last saw other agents.
+- Schema: `relationships.lastSeenPosition`, `relationships.lastSeenTick`
+- Mutation: `updateSightings` called at start of every `think()` cycle
+- Prompt: PEOPLE YOU REMEMBER SEEING section (filtered to <200 ticks ago)
+
+### Tier 2: Scarcity & Incentives
+
+**T2.1 Energy Drain & Mandatory Food**
+- Passive drain: 0.4 energy/tick for all non-sleeping agents
+- Increased action costs: gather (5), craft (7), build (12), movement (0.5/tick)
+- Starvation: mood deterioration below 15 energy, auto-rest at 5 energy
+- Prompt: urgency warnings at <30% and <15% energy
+- All constants in `ENERGY` object in `convex/lib/constants.ts`
+
+**T2.2 Resource Scarcity**
+- Reduced initial spawn rates via `RESOURCES.SPAWN_CHANCE` constants
+- Season-affected regen: `RESOURCES.SEASON_MULTIPLIER` (winter food at 0.2x, summer food at 1.5x)
+- `regenerateResources()` in `convex/world/systems.ts` reads current season
+
+**T2.3 Item Degradation**
+- Tool durability: `stone_tools` (10 uses), `metal_tools` (25 uses)
+- Schema: `inventory.durability` (optional)
+- Crafting with tools: +1 output bonus, costs 1 durability
+- Crafted tools get durability assigned automatically
+- Building decay: -1 condition every 20 ticks; `decayBuildings()` in `convex/world/systems.ts`
+- Repair tool: `repairBuilding` (2 wood + 1 stone = +20 condition)
+
+**T2.4 Building Bonuses**
+- Shelter: +3 energy/tick sleep bonus within 2 tiles
+- Workshop: +1 crafting output, -2 energy cost within 2 tiles
+- Market: trade range extends from 6 to 12 tiles within 4 tiles
+- MeetingHall: +1 vote weight within 3 tiles
+- Farm: food production (existing)
+- Utility: `hasBuildingBonus()` in `convex/world/systems.ts`
+
+### Tier 3: Social Depth
+
+**T3.1 Multi-Turn Conversations**
+- `respondToConversation` internalAction: lightweight LLM call for conversation replies
+- `speakTo` schedules target response (500-1500ms jitter)
+- Only triggers for idle/talking agents
+- Capped at 3 exchanges per conversation (prevent runaway LLM costs)
+- `buildConversationPrompt()` in `convex/agents/prompts.ts`
+
+**T3.2 Conflict Mechanics**
+- `confront` tool: grievance-based confrontation (-0.1 trust, -0.08 affinity both parties)
+- `claimTerritory` tool: claim 3x3 area, creates disputes if near others' buildings
+- Both create world events (`conflict`/`territory` types) and memories
+- Leadership skill influences confrontation outcomes
+
+**T3.3 Alliance Shared Storage**
+- Schema: `buildingInventory` table (by_building, by_building_item indexes)
+- `depositToStorehouse`, `withdrawFromStorehouse` mutations
+- Only works within 2 tiles of an alliance storehouse in working condition
+- Storehouse contents shown in agent prompt and thinking context
+
+**T3.4 Reputation System**
+- Schema: `reputation` table (agentId, score, lastUpdated)
+- Recalculated on every `updateRelationship()` call (average incoming trust)
+- `recalculateReputation()` in `convex/social/relationships.ts`
+- COMMUNITY REPUTATION section in agent prompt
+- Reputation badge in AgentInspector (color-coded)
+- `getReputations` public query in `convex/world.ts`
+
+### Tier 4: Frontend Storytelling
+
+**T4.1 Speech Bubbles** — `speechBubbleLayer` in GameWorld
+- Auto-triggered on conversation events from WorldCanvas
+- White rounded rect with text, triangle tail, follows agent
+- Auto-fades after 3.5 seconds; max 1 bubble per agent
+
+**T4.2 Trade/Gift Animations** — `animationLayer` in GameWorld
+- Colored circle lerps from sender to receiver over ~1 second
+- Ease-in-out timing with upward arc for visual appeal
+- Triggered on `trade` and `gift` world events
+
+**T4.3 Alliance Territory Shading** — `territoryLayer` in GameWorld
+- Translucent overlay around member positions and alliance buildings
+- 3-tile radius with alpha falloff
+- Color-coded per alliance
+
+**T4.4 Story Mode Narrator** — Rule-based event-to-prose conversion
+- Server: `convex/analytics/narrator.ts` — template-based narration per event type
+- Grouped by in-game time periods (dawn, morning, midday, afternoon, evening, night)
+- Frontend: `src/components/panels/StoryNarrator.tsx` — serif font, warm amber headers
+- "Story" tab in Sidebar
+
+### New Constants (`convex/lib/constants.ts`)
+
+- `ENERGY` — passive drain, action costs, thresholds, regen rates
+- `RESOURCES` — spawn chances, season multipliers
+- `DURABILITY` — tool durability values
+- `BUILDING_BONUS` — range and bonus values per building type
+- `BUILDING_DECAY_RATE`, `BUILDING_DECAY_INTERVAL`
+- `PERCEPTION` — range values for agent/resource/building/speak/give/gather
+
+---
+
 *Last updated: February 6, 2026*
 *Git remote: https://github.com/AbhinavMalkoochi/simulation.git*

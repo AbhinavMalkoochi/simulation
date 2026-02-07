@@ -601,6 +601,7 @@ export const respondToConversation = internalAction({
     agentId: v.id("agents"),
     conversationId: v.id("conversations"),
   },
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   handler: async (ctx, { agentId, conversationId }) => {
     const agent = await ctx.runQuery(internal.agents.queries.getById, { agentId });
     if (!agent) return;
@@ -626,7 +627,6 @@ export const respondToConversation = internalAction({
     if (myMessages.length >= MAX_CONVERSATION_EXCHANGES) return;
 
     // Resolve speaker names
-    const allAgents = await ctx.runQuery(internal.agents.queries.getById, { agentId });
     const speakerNames = new Map<string, string>();
     speakerNames.set(String(agentId), agent.name);
 
