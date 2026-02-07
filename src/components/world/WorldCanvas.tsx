@@ -66,5 +66,5 @@ export function WorldCanvas({
     w.updateTerritories(agents, buildings, alliances);
   }, [agents, resources, buildings, events, alliances, timeOfDay, weather]);
 
-  return <div ref={containerRef} className="flex-1 relative" />;
+  return <div ref={containerRef} className="absolute inset-0" />;
 }
