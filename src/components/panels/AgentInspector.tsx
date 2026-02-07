@@ -37,6 +37,8 @@ export function AgentInspector({ agent, onClose }: { agent: AgentDoc; onClose: (
   const memories = useQuery(api.agents.getMemories, { agentId: agent._id, limit: 10 });
   const inventory = useQuery(api.world.getInventory, { agentId: agent._id });
   const conversations = useQuery(api.agents.getConversations, { agentId: agent._id });
+  const reputations = useQuery(api.world.getReputations);
+  const agentReputation = reputations?.find((r) => r.agentId === agent._id);
 
   const color = agentColorHex(agent.spriteSeed);
 
@@ -57,6 +59,17 @@ export function AgentInspector({ agent, onClose }: { agent: AgentDoc; onClose: (
         </div>
         <button onClick={onClose} className="text-slate-600 hover:text-slate-400 text-sm cursor-pointer">✕</button>
       </div>
+
+      {agentReputation && (
+        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${
+          agentReputation.score > 0.3 ? "bg-emerald-900/50 text-emerald-300" :
+          agentReputation.score > 0 ? "bg-slate-800 text-slate-300" :
+          agentReputation.score > -0.3 ? "bg-amber-900/50 text-amber-300" :
+          "bg-red-900/50 text-red-300"
+        }`}>
+          Reputation: {agentReputation.score.toFixed(2)}
+        </div>
+      )}
 
       <p className="text-xs text-slate-400 leading-relaxed">{agent.backstory}</p>
 

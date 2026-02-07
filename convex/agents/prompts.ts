@@ -109,6 +109,7 @@ interface BuildPromptArgs {
   pendingTrades: PendingTrade[];
   lastSightings: LastSighting[];
   storehouseInventory: InventoryItem[];
+  reputations: Array<{ name: string; score: number }>;
   timeOfDay: number;
   weather: string;
   tick: number;
@@ -118,7 +119,7 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
   const {
     agent, memories, nearbyAgents, nearbyResources, pendingConversations,
     inventory, nearbyBuildings, relationships, myAlliances, pendingProposals, pendingTrades,
-    lastSightings, storehouseInventory, timeOfDay, weather, tick,
+    lastSightings, storehouseInventory, reputations, timeOfDay, weather, tick,
   } = args;
 
   const personalityDesc = describePersonality(agent.personality);
@@ -179,6 +180,10 @@ WEATHER: ${weather}
 YOUR RELATIONSHIPS:
 ${relationships.length > 0 ? relationships.map((r) => `- Agent ${r.targetAgentId}: trust ${r.trust.toFixed(2)}, affinity ${r.affinity.toFixed(2)}`).join("\n") : "No established relationships."}
 
+${reputations.length > 0 ? `COMMUNITY REPUTATION:\n${reputations.map((r) => {
+  const label = r.score > 0.3 ? "well-trusted" : r.score > 0 ? "neutral-positive" : r.score > -0.3 ? "neutral-negative" : "distrusted";
+  return `- ${r.name}: ${label} (${r.score.toFixed(2)})`;
+}).join("\n")}` : ""}
 YOUR ALLIANCES:
 ${myAlliances.length > 0 ? myAlliances.map((a) => `- "${a.name}" (${a.memberIds.length} members)${a.rules.length > 0 ? ` Rules: ${a.rules.join("; ")}` : ""}`).join("\n") : "None."}
 ${pendingProposals.length > 0 ? `\nPENDING PROPOSALS TO VOTE ON:\n${pendingProposals.map((p) => `- [id: ${p._id}] "${p.content}" (in ${p.allianceName ?? "unknown alliance"})`).join("\n")}` : ""}

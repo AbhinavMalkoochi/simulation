@@ -77,6 +77,9 @@ export const getThinkingContext = internalQuery({
       .collect();
     const pendingTrades = allTrades.filter((t) => t.status === "pending");
 
+    // Fetch community reputations
+    const reputations = await ctx.db.query("reputation").collect();
+
     // Check for storehouse inventory if near an alliance storehouse
     let storehouseInventory: Array<{ itemType: string; quantity: number }> = [];
     if (myAlliances.length > 0) {
@@ -97,6 +100,7 @@ export const getThinkingContext = internalQuery({
       agent, world, memories, nearbyAgents, pendingConversations, nearbyResources,
       inventory, nearbyBuildings, relationships, myAlliances, myPendingProposals, pendingTrades,
       storehouseInventory,
+      reputations,
     };
   },
 });

@@ -395,6 +395,7 @@ export const think = internalAction({
     const {
       agent, world, memories, nearbyAgents, pendingConversations, nearbyResources,
       inventory, nearbyBuildings, relationships, myAlliances, myPendingProposals, pendingTrades,
+      storehouseInventory, reputations,
     } = context;
     const tick = world.tick;
 
@@ -411,9 +412,23 @@ export const think = internalAction({
     }
 
     const agentNames = new Map<string, string>();
+    // Add nearby agents to name map
+    for (const a of nearbyAgents) {
+      agentNames.set(String(a._id), a.name);
+    }
+    // Add relationship targets
     for (const r of relationships) {
-      const target = await ctx.runQuery(internal.agents.queries.getById, { agentId: r.targetAgentId as typeof agentId });
-      if (target) agentNames.set(r.targetAgentId, target.name);
+      if (!agentNames.has(r.targetAgentId)) {
+        const target = await ctx.runQuery(internal.agents.queries.getById, { agentId: r.targetAgentId as typeof agentId });
+        if (target) agentNames.set(r.targetAgentId, target.name);
+      }
+    }
+    // Add reputation entries (may include agents not in relationships)
+    for (const rep of (reputations ?? [])) {
+      if (!agentNames.has(rep.agentId as string)) {
+        const a = await ctx.runQuery(internal.agents.queries.getById, { agentId: rep.agentId as typeof agentId });
+        if (a) agentNames.set(rep.agentId as string, a.name);
+      }
     }
 
     const scored = scoreMemories(memories, tick);
@@ -428,6 +443,12 @@ export const think = internalAction({
         ticksAgo: tick - (r.lastSeenTick ?? 0),
       }))
       .filter((s) => s.ticksAgo < 200);
+
+    // Map reputation agent IDs to names
+    const reputationEntries = (reputations ?? []).map((r) => ({
+      name: agentNames.get(r.agentId as string) ?? r.agentId,
+      score: r.score,
+    }));
 
     const systemPrompt = buildSystemPrompt({
       agent: { ...agent, _id: String(agentId), planSteps: agent.planSteps ?? undefined, planStep: agent.planStep ?? undefined },
@@ -461,6 +482,7 @@ export const think = internalAction({
       })),
       lastSightings,
       storehouseInventory: storehouseInventory ?? [],
+      reputations: reputationEntries,
       timeOfDay: world.timeOfDay,
       weather: world.weather,
       tick,

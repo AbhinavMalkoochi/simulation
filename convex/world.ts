@@ -54,3 +54,9 @@ export const getRelationships = query({
     return ctx.db.query("relationships").collect();
   },
 });
+
+export const getReputations = query({
+  handler: async (ctx) => {
+    return ctx.db.query("reputation").collect();
+  },
+});
