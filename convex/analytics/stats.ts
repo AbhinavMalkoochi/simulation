@@ -9,13 +9,13 @@ export const getEconomyStats = query({
 
     const resourceTotals: Record<string, number> = {};
     for (const r of resources) {
-      resourceTotals[r.type] = (resourceTotals[r.type] ?? 0) + r.quantity;
+      resourceTotals[r.type] = Math.round((resourceTotals[r.type] ?? 0) + r.quantity);
     }
 
     const agentWealth: Array<{ name: string; total: number }> = [];
     for (const agent of agents) {
       const items = inventory.filter((i) => i.agentId === agent._id);
-      const total = items.reduce((sum, i) => sum + i.quantity, 0);
+      const total = Math.round(items.reduce((sum, i) => sum + i.quantity, 0));
       agentWealth.push({ name: agent.name, total });
     }
     agentWealth.sort((a, b) => b.total - a.total);

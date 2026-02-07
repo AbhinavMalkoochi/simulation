@@ -62,7 +62,7 @@ export async function regenerateResources(ctx: MutationCtx): Promise<void> {
     if (r.quantity < r.maxQuantity) {
       const seasonMultiplier = multipliers[r.type as keyof typeof multipliers] ?? 1.0;
       const effectiveRate = r.regenRate * seasonMultiplier;
-      const newQuantity = Math.min(r.maxQuantity, r.quantity + effectiveRate);
+      const newQuantity = Math.round(Math.min(r.maxQuantity, r.quantity + effectiveRate) * 100) / 100;
       await ctx.db.patch(r._id, { quantity: newQuantity });
     }
   }

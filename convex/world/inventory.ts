@@ -14,10 +14,11 @@ export async function addItem(
     .withIndex("by_agent_item", (q) => q.eq("agentId", agentId).eq("itemType", itemType))
     .first();
 
+  const rounded = Math.round(quantity);
   if (existing) {
-    await ctx.db.patch(existing._id, { quantity: existing.quantity + quantity });
+    await ctx.db.patch(existing._id, { quantity: Math.round(existing.quantity + rounded) });
   } else {
-    await ctx.db.insert("inventory", { agentId, itemType, quantity });
+    await ctx.db.insert("inventory", { agentId, itemType, quantity: rounded });
   }
 }
 
@@ -27,17 +28,19 @@ export async function removeItem(
   itemType: string,
   quantity: number,
 ): Promise<boolean> {
+  const rounded = Math.round(quantity);
   const existing = await ctx.db
     .query("inventory")
     .withIndex("by_agent_item", (q) => q.eq("agentId", agentId).eq("itemType", itemType))
     .first();
 
-  if (!existing || existing.quantity < quantity) return false;
+  if (!existing || existing.quantity < rounded) return false;
 
-  if (existing.quantity === quantity) {
+  const newQty = Math.round(existing.quantity - rounded);
+  if (newQty <= 0) {
     await ctx.db.delete(existing._id);
   } else {
-    await ctx.db.patch(existing._id, { quantity: existing.quantity - quantity });
+    await ctx.db.patch(existing._id, { quantity: newQty });
   }
   return true;
 }
@@ -114,7 +117,7 @@ export async function getInventory(
     .query("inventory")
     .withIndex("by_agent", (q) => q.eq("agentId", agentId))
     .collect();
-  return items.map((i) => ({ itemType: i.itemType, quantity: i.quantity }));
+  return items.map((i) => ({ itemType: i.itemType, quantity: Math.round(i.quantity) }));
 }
 
 export const getAgentInventory = internalQuery({
