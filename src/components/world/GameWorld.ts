@@ -1,7 +1,7 @@
 import { Application, Container, Graphics, Text, TextStyle } from "pixi.js";
 import { TILE_COLORS, AGENT_COLORS, TILE } from "../../../convex/lib/constants";
 import { generateMap } from "../../../convex/lib/mapgen";
-import type { AgentSpriteData, ResourceData, BuildingData } from "../../types";
+import type { AgentSpriteData, ResourceData, BuildingData, WorldEvent, AllianceData } from "../../types";
 
 // --- Types ---
 
@@ -338,8 +338,80 @@ export class GameWorld {
 
   updateWeather(weather: string): void {
     if (!this._initialized) return;
-    // Weather particles could be added here (rain, fog overlay, etc.)
     void weather;
+  }
+
+  private processedEventIds = new Set<string>();
+
+  /** Process new world events — call on every render with the latest events array */
+  processEvents(events: readonly WorldEvent[]): void {
+    if (!this._initialized) return;
+
+    for (const event of events) {
+      if (this.processedEventIds.has(event._id)) continue;
+      this.processedEventIds.add(event._id);
+
+      if (event.type === "conversation" && event.involvedAgentIds.length >= 1) {
+        const match = event.description.match(/said to .+?: "(.+?)"/);
+        if (match) {
+          this.showSpeechBubble(event.involvedAgentIds[0], match[1]);
+        }
+      }
+
+      if ((event.type === "trade" || event.type === "gift") && event.involvedAgentIds.length >= 2) {
+        this.showTransferAnimation(event.involvedAgentIds[0], event.involvedAgentIds[1]);
+        this.spawnParticles(event.involvedAgentIds[0], 0xfbbf24, 6);
+      }
+
+      if (event.type === "gather" && event.involvedAgentIds.length >= 1) {
+        this.spawnParticles(event.involvedAgentIds[0], 0x22c55e, 4);
+      }
+
+      if (event.type === "craft" && event.involvedAgentIds.length >= 1) {
+        this.spawnParticles(event.involvedAgentIds[0], 0xfbbf24, 5);
+      }
+
+      if (event.type === "build" && event.involvedAgentIds.length >= 1) {
+        this.spawnParticles(event.involvedAgentIds[0], 0x9ca3af, 8);
+      }
+    }
+
+    // Cap processed IDs to prevent memory growth
+    if (this.processedEventIds.size > 500) {
+      const ids = Array.from(this.processedEventIds);
+      this.processedEventIds = new Set(ids.slice(-200));
+    }
+  }
+
+  private static readonly ALLIANCE_COLORS = [0x3b82f6, 0xef4444, 0x22c55e, 0xeab308, 0xa855f7, 0xf97316, 0x06b6d4, 0xec4899];
+
+  /** Update territory overlay from alliance data */
+  updateTerritories(
+    agents: readonly AgentSpriteData[],
+    buildings: readonly BuildingData[],
+    alliances: readonly AllianceData[],
+  ): void {
+    if (!this._initialized || alliances.length === 0) {
+      this.territoryLayer?.clear();
+      return;
+    }
+
+    const agentMap = new Map(agents.map((a) => [a._id, a.position]));
+    const buildingPositions = buildings.map((b) => ({ x: b.posX, y: b.posY, allianceId: b.allianceId }));
+
+    const territories = alliances.map((alliance, idx) => {
+      const positions: Array<{ x: number; y: number }> = [];
+      for (const memberId of alliance.memberIds) {
+        const pos = agentMap.get(memberId);
+        if (pos) positions.push({ x: pos.x, y: pos.y });
+      }
+      for (const bp of buildingPositions) {
+        if (bp.allianceId === alliance._id) positions.push({ x: bp.x, y: bp.y });
+      }
+      return { positions, color: GameWorld.ALLIANCE_COLORS[idx % GameWorld.ALLIANCE_COLORS.length] };
+    });
+
+    this.updateTerritoryOverlay(territories);
   }
 
   showSpeechBubble(agentId: string, message: string, durationMs = 4000): void {
