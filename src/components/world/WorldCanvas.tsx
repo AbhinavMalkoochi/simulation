@@ -52,6 +52,17 @@ export function WorldCanvas({
     };
   }, [mapSeed, mapWidth, mapHeight, tileSize]);
 
+  // Observe container resizes (sidebar toggle, window resize) and force PixiJS to follow
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      worldRef.current?.resize();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Push all data updates to GameWorld in a single effect
   useEffect(() => {
     const w = worldRef.current;

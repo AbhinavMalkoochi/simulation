@@ -38,11 +38,10 @@ export function Toolbar({
         </button>
         <button
           onClick={onToggleDirector}
-          className={`px-4 py-1.5 text-xs font-medium rounded-full transition-colors cursor-pointer ${
-            directorMode
+          className={`px-4 py-1.5 text-xs font-medium rounded-full transition-colors cursor-pointer ${directorMode
               ? "bg-neutral-900 text-white"
               : "border border-neutral-200 text-neutral-700 hover:bg-neutral-100"
-          }`}
+            }`}
         >
           Director
         </button>

@@ -73,7 +73,7 @@ export function App() {
         onToggleSidebar={() => setSidebarOpen((s) => !s)}
       />
       <div className="flex-1 flex min-h-0 overflow-hidden">
-        <div className="flex-1 relative min-w-0">
+        <div className="flex-1 relative min-w-0 bg-[#2d6b3f]">
           <WorldCanvas
             agents={agents ?? []}
             resources={resources ?? []}

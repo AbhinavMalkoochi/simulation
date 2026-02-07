@@ -1,7 +1,13 @@
 import { Application, Container, Graphics, Text, TextStyle } from "pixi.js";
 import { TILE_COLORS, AGENT_COLORS, TILE } from "../../../convex/lib/constants";
 import { generateMap } from "../../../convex/lib/mapgen";
-import type { AgentSpriteData, ResourceData, BuildingData, WorldEvent, AllianceData } from "../../types";
+import type {
+  AgentSpriteData,
+  ResourceData,
+  BuildingData,
+  WorldEvent,
+  AllianceData,
+} from "../../types";
 
 // --- Types ---
 
@@ -100,8 +106,13 @@ const BUILDING_COLORS: Record<string, number> = {
   storehouse: 0x78716c,
 };
 
-const SKIN_COLORS = [0xf5d0a9, 0xd4a76a, 0xc68642, 0x8d5524, 0xffdbb4, 0xe8b88a];
-const HAIR_COLORS = [0x2c1b0e, 0x5c3317, 0xa0522d, 0xffd700, 0xc04000, 0x1a1a2e, 0xe8e8e8, 0x4a2c2a];
+const SKIN_COLORS = [
+  0xf5d0a9, 0xd4a76a, 0xc68642, 0x8d5524, 0xffdbb4, 0xe8b88a,
+];
+const HAIR_COLORS = [
+  0x2c1b0e, 0x5c3317, 0xa0522d, 0xffd700, 0xc04000, 0x1a1a2e, 0xe8e8e8,
+  0x4a2c2a,
+];
 
 // --- Seeded random for deterministic tile details ---
 function seededHash(x: number, y: number, seed: number): number {
@@ -162,7 +173,11 @@ export class GameWorld {
     });
 
     if (this._destroyed) {
-      try { this.app.destroy(true, { children: true }); } catch { /* noop */ }
+      try {
+        this.app.destroy(true, { children: true });
+      } catch {
+        /* noop */
+      }
       return;
     }
 
@@ -324,14 +339,24 @@ export class GameWorld {
     const darkness = this.getDarkness(timeOfDay);
     if (darkness > 0) {
       // Night: deep blue. Dawn/dusk: warm orange tint
-      const isDawnDusk = (timeOfDay > 5 && timeOfDay < 7) || (timeOfDay > 18 && timeOfDay < 21);
+      const isDawnDusk =
+        (timeOfDay > 5 && timeOfDay < 7) || (timeOfDay > 18 && timeOfDay < 21);
       const tintColor = isDawnDusk ? 0x1a0500 : 0x000022;
-      overlay.rect(0, 0, totalW, totalH).fill({ color: tintColor, alpha: darkness });
+      overlay
+        .rect(0, 0, totalW, totalH)
+        .fill({ color: tintColor, alpha: darkness });
     }
 
     // Stars visibility
     if (this.starLayer) {
-      const starAlpha = timeOfDay >= 21 || timeOfDay <= 5 ? 0.7 : timeOfDay > 19 ? (timeOfDay - 19) / 2 * 0.7 : timeOfDay < 6 ? (6 - timeOfDay) * 0.7 : 0;
+      const starAlpha =
+        timeOfDay >= 21 || timeOfDay <= 5
+          ? 0.7
+          : timeOfDay > 19
+            ? ((timeOfDay - 19) / 2) * 0.7
+            : timeOfDay < 6
+              ? (6 - timeOfDay) * 0.7
+              : 0;
       this.starLayer.alpha = starAlpha;
     }
   }
@@ -358,8 +383,14 @@ export class GameWorld {
         }
       }
 
-      if ((event.type === "trade" || event.type === "gift") && event.involvedAgentIds.length >= 2) {
-        this.showTransferAnimation(event.involvedAgentIds[0], event.involvedAgentIds[1]);
+      if (
+        (event.type === "trade" || event.type === "gift") &&
+        event.involvedAgentIds.length >= 2
+      ) {
+        this.showTransferAnimation(
+          event.involvedAgentIds[0],
+          event.involvedAgentIds[1],
+        );
         this.spawnParticles(event.involvedAgentIds[0], 0xfbbf24, 6);
       }
 
@@ -383,7 +414,10 @@ export class GameWorld {
     }
   }
 
-  private static readonly ALLIANCE_COLORS = [0x3b82f6, 0xef4444, 0x22c55e, 0xeab308, 0xa855f7, 0xf97316, 0x06b6d4, 0xec4899];
+  private static readonly ALLIANCE_COLORS = [
+    0x3b82f6, 0xef4444, 0x22c55e, 0xeab308, 0xa855f7, 0xf97316, 0x06b6d4,
+    0xec4899,
+  ];
 
   /** Update territory overlay from alliance data */
   updateTerritories(
@@ -397,7 +431,11 @@ export class GameWorld {
     }
 
     const agentMap = new Map(agents.map((a) => [a._id, a.position]));
-    const buildingPositions = buildings.map((b) => ({ x: b.posX, y: b.posY, allianceId: b.allianceId }));
+    const buildingPositions = buildings.map((b) => ({
+      x: b.posX,
+      y: b.posY,
+      allianceId: b.allianceId,
+    }));
 
     const territories = alliances.map((alliance, idx) => {
       const positions: Array<{ x: number; y: number }> = [];
@@ -406,9 +444,14 @@ export class GameWorld {
         if (pos) positions.push({ x: pos.x, y: pos.y });
       }
       for (const bp of buildingPositions) {
-        if (bp.allianceId === alliance._id) positions.push({ x: bp.x, y: bp.y });
+        if (bp.allianceId === alliance._id)
+          positions.push({ x: bp.x, y: bp.y });
       }
-      return { positions, color: GameWorld.ALLIANCE_COLORS[idx % GameWorld.ALLIANCE_COLORS.length] };
+      return {
+        positions,
+        color:
+          GameWorld.ALLIANCE_COLORS[idx % GameWorld.ALLIANCE_COLORS.length],
+      };
     });
 
     this.updateTerritoryOverlay(territories);
@@ -427,7 +470,8 @@ export class GameWorld {
     if (!sprite) return;
 
     const bubbleContainer = new Container();
-    const truncated = message.length > 80 ? message.slice(0, 77) + "..." : message;
+    const truncated =
+      message.length > 80 ? message.slice(0, 77) + "..." : message;
 
     const bubbleText = new Text({
       text: truncated,
@@ -447,8 +491,15 @@ export class GameWorld {
     const bgHeight = bubbleText.height + 12;
 
     const bg = new Graphics();
-    bg.roundRect(0, 0, bgWidth, bgHeight, 6).fill({ color: 0xf8fafc, alpha: 0.95 });
-    bg.roundRect(0, 0, bgWidth, bgHeight, 6).stroke({ color: 0xe2e8f0, width: 0.5, alpha: 0.5 });
+    bg.roundRect(0, 0, bgWidth, bgHeight, 6).fill({
+      color: 0xf8fafc,
+      alpha: 0.95,
+    });
+    bg.roundRect(0, 0, bgWidth, bgHeight, 6).stroke({
+      color: 0xe2e8f0,
+      width: 0.5,
+      alpha: 0.5,
+    });
     // Triangle tail pointing down
     bg.moveTo(bgWidth / 2 - 4, bgHeight)
       .lineTo(bgWidth / 2, bgHeight + 5)
@@ -469,7 +520,11 @@ export class GameWorld {
     });
   }
 
-  showTransferAnimation(fromAgentId: string, toAgentId: string, itemColor = 0xfbbf24): void {
+  showTransferAnimation(
+    fromAgentId: string,
+    toAgentId: string,
+    itemColor = 0xfbbf24,
+  ): void {
     if (!this._initialized || !this.animationLayer) return;
     const fromSprite = this.agentSprites.get(fromAgentId);
     const toSprite = this.agentSprites.get(toAgentId);
@@ -516,7 +571,12 @@ export class GameWorld {
     }
   }
 
-  updateTerritoryOverlay(territories: Array<{ positions: Array<{ x: number; y: number }>; color: number }>): void {
+  updateTerritoryOverlay(
+    territories: Array<{
+      positions: Array<{ x: number; y: number }>;
+      color: number;
+    }>,
+  ): void {
     if (!this._initialized || !this.territoryLayer) return;
     this.territoryLayer.clear();
 
@@ -527,14 +587,19 @@ export class GameWorld {
           for (let dx = -radius; dx <= radius; dx++) {
             const tx = pos.x + dx;
             const ty = pos.y + dy;
-            if (tx < 0 || ty < 0 || tx >= this.mapWidth || ty >= this.mapHeight) continue;
+            if (tx < 0 || ty < 0 || tx >= this.mapWidth || ty >= this.mapHeight)
+              continue;
             const dist = Math.abs(dx) + Math.abs(dy);
             if (dist > radius) continue;
             const alpha = 0.06 * (1 - dist / (radius + 1));
-            this.territoryLayer.rect(
-              tx * this.tileSize, ty * this.tileSize,
-              this.tileSize, this.tileSize,
-            ).fill({ color: territory.color, alpha });
+            this.territoryLayer
+              .rect(
+                tx * this.tileSize,
+                ty * this.tileSize,
+                this.tileSize,
+                this.tileSize,
+              )
+              .fill({ color: territory.color, alpha });
           }
         }
       }
@@ -545,7 +610,11 @@ export class GameWorld {
     this._destroyed = true;
     this._abortController.abort();
     if (this._initialized) {
-      try { this.app!.destroy(true, { children: true }); } catch { /* noop */ }
+      try {
+        this.app!.destroy(true, { children: true });
+      } catch {
+        /* noop */
+      }
     }
   }
 
@@ -598,7 +667,10 @@ export class GameWorld {
             const fx = bx + hash * ts * 0.5 + ts * 0.25;
             const fy = by + seededHash(x, y, seed + 3) * ts * 0.5 + ts * 0.25;
             const flowerColors = [0xff6b9d, 0xffd93d, 0xc084fc, 0xffffff];
-            const fcolor = flowerColors[Math.floor(seededHash(x, y, seed + 4) * flowerColors.length)];
+            const fcolor =
+              flowerColors[
+                Math.floor(seededHash(x, y, seed + 4) * flowerColors.length)
+              ];
             detailGfx.circle(fx, fy, 1.5).fill({ color: fcolor, alpha: 0.7 });
           }
         } else if (tileType === TILE.FOREST) {
@@ -608,7 +680,8 @@ export class GameWorld {
           const treeSize = 5 + hash * 4;
 
           // Tree trunk
-          detailGfx.rect(cx - 1, cy + treeSize * 0.3, 2, treeSize * 0.4)
+          detailGfx
+            .rect(cx - 1, cy + treeSize * 0.3, 2, treeSize * 0.4)
             .fill({ color: 0x4a3728, alpha: 0.8 });
           // Tree canopy (triangle)
           detailGfx
@@ -623,7 +696,8 @@ export class GameWorld {
             const cx2 = bx + ts * 0.3 + seededHash(x, y, seed + 6) * ts * 0.15;
             const cy2 = by + ts * 0.6;
             const size2 = 3 + seededHash(x, y, seed + 7) * 3;
-            detailGfx.rect(cx2 - 0.8, cy2 + size2 * 0.3, 1.6, size2 * 0.3)
+            detailGfx
+              .rect(cx2 - 0.8, cy2 + size2 * 0.3, 1.6, size2 * 0.3)
               .fill({ color: 0x4a3728, alpha: 0.7 });
             detailGfx
               .moveTo(cx2, cy2 - size2 * 0.4)
@@ -663,11 +737,15 @@ export class GameWorld {
     const totalH = this.mapHeight * this.tileSize;
 
     for (let x = 0; x <= this.mapWidth; x++) {
-      gfx.moveTo(x * this.tileSize, 0).lineTo(x * this.tileSize, totalH)
+      gfx
+        .moveTo(x * this.tileSize, 0)
+        .lineTo(x * this.tileSize, totalH)
         .stroke({ color: 0x000000, width: 0.5, alpha: 0.1 });
     }
     for (let y = 0; y <= this.mapHeight; y++) {
-      gfx.moveTo(0, y * this.tileSize).lineTo(totalW, y * this.tileSize)
+      gfx
+        .moveTo(0, y * this.tileSize)
+        .lineTo(totalW, y * this.tileSize)
         .stroke({ color: 0x000000, width: 0.5, alpha: 0.1 });
     }
   }
@@ -688,56 +766,95 @@ export class GameWorld {
     this.starLayer.alpha = 0;
   }
 
-  private drawResourceIcon(gfx: Graphics, type: string, cx: number, cy: number, ts: number): void {
+  private drawResourceIcon(
+    gfx: Graphics,
+    type: string,
+    cx: number,
+    cy: number,
+    ts: number,
+  ): void {
     const s = ts * 0.18;
     const color = RESOURCE_COLORS[type] ?? 0xffffff;
 
     if (type === "wood") {
       // Tree stump
-      gfx.rect(cx - s * 0.6, cy - s * 0.3, s * 1.2, s * 1.2).fill({ color: 0x6b3e1a, alpha: 0.8 });
-      gfx.ellipse(cx, cy - s * 0.3, s * 0.7, s * 0.3).fill({ color: 0x8b5e3c, alpha: 0.9 });
+      gfx
+        .rect(cx - s * 0.6, cy - s * 0.3, s * 1.2, s * 1.2)
+        .fill({ color: 0x6b3e1a, alpha: 0.8 });
+      gfx
+        .ellipse(cx, cy - s * 0.3, s * 0.7, s * 0.3)
+        .fill({ color: 0x8b5e3c, alpha: 0.9 });
     } else if (type === "stone") {
       // Rock pile
-      gfx.ellipse(cx, cy + s * 0.2, s * 0.9, s * 0.5).fill({ color: 0x6b7280, alpha: 0.8 });
-      gfx.ellipse(cx - s * 0.3, cy - s * 0.1, s * 0.5, s * 0.4).fill({ color: 0x9ca3af, alpha: 0.7 });
+      gfx
+        .ellipse(cx, cy + s * 0.2, s * 0.9, s * 0.5)
+        .fill({ color: 0x6b7280, alpha: 0.8 });
+      gfx
+        .ellipse(cx - s * 0.3, cy - s * 0.1, s * 0.5, s * 0.4)
+        .fill({ color: 0x9ca3af, alpha: 0.7 });
     } else if (type === "food") {
       // Berry bush
       gfx.circle(cx, cy, s * 0.6).fill({ color: 0x22c55e, alpha: 0.6 });
-      gfx.circle(cx - s * 0.2, cy - s * 0.15, s * 0.2).fill({ color: 0xef4444, alpha: 0.8 });
-      gfx.circle(cx + s * 0.2, cy + s * 0.1, s * 0.2).fill({ color: 0xef4444, alpha: 0.8 });
+      gfx
+        .circle(cx - s * 0.2, cy - s * 0.15, s * 0.2)
+        .fill({ color: 0xef4444, alpha: 0.8 });
+      gfx
+        .circle(cx + s * 0.2, cy + s * 0.1, s * 0.2)
+        .fill({ color: 0xef4444, alpha: 0.8 });
     } else if (type === "herbs") {
       // Herb sprout
-      gfx.moveTo(cx, cy + s * 0.4).lineTo(cx, cy - s * 0.4).stroke({ color: 0x16a34a, width: 1.5, alpha: 0.8 });
-      gfx.ellipse(cx - s * 0.2, cy - s * 0.2, s * 0.3, s * 0.15).fill({ color: 0x22c55e, alpha: 0.7 });
-      gfx.ellipse(cx + s * 0.2, cy - s * 0.35, s * 0.3, s * 0.15).fill({ color: 0x22c55e, alpha: 0.7 });
+      gfx
+        .moveTo(cx, cy + s * 0.4)
+        .lineTo(cx, cy - s * 0.4)
+        .stroke({ color: 0x16a34a, width: 1.5, alpha: 0.8 });
+      gfx
+        .ellipse(cx - s * 0.2, cy - s * 0.2, s * 0.3, s * 0.15)
+        .fill({ color: 0x22c55e, alpha: 0.7 });
+      gfx
+        .ellipse(cx + s * 0.2, cy - s * 0.35, s * 0.3, s * 0.15)
+        .fill({ color: 0x22c55e, alpha: 0.7 });
     } else if (type === "metal") {
       // Metal ore
-      gfx.moveTo(cx - s * 0.5, cy + s * 0.3)
+      gfx
+        .moveTo(cx - s * 0.5, cy + s * 0.3)
         .lineTo(cx - s * 0.3, cy - s * 0.4)
         .lineTo(cx + s * 0.3, cy - s * 0.4)
         .lineTo(cx + s * 0.5, cy + s * 0.3)
         .closePath()
         .fill({ color: 0x94a3b8, alpha: 0.7 });
-      gfx.circle(cx, cy - s * 0.1, s * 0.2).fill({ color: 0xd4d4d8, alpha: 0.6 });
+      gfx
+        .circle(cx, cy - s * 0.1, s * 0.2)
+        .fill({ color: 0xd4d4d8, alpha: 0.6 });
     } else {
       gfx.circle(cx, cy, s).fill({ color, alpha: 0.7 });
     }
   }
 
-  private drawBuildingIcon(gfx: Graphics, type: string, bx: number, by: number, ts: number): void {
+  private drawBuildingIcon(
+    gfx: Graphics,
+    type: string,
+    bx: number,
+    by: number,
+    ts: number,
+  ): void {
     const color = BUILDING_COLORS[type] ?? 0xaaaaaa;
     const pad = ts * 0.08;
     const size = ts - pad * 2;
     const cx = bx + ts / 2;
 
     // Base
-    gfx.roundRect(bx + pad, by + pad, size, size, 3).fill({ color, alpha: 0.7 });
-    gfx.roundRect(bx + pad, by + pad, size, size, 3).stroke({ color: 0xffffff, width: 1, alpha: 0.25 });
+    gfx
+      .roundRect(bx + pad, by + pad, size, size, 3)
+      .fill({ color, alpha: 0.7 });
+    gfx
+      .roundRect(bx + pad, by + pad, size, size, 3)
+      .stroke({ color: 0xffffff, width: 1, alpha: 0.25 });
 
     // Roof / icon detail
     if (type === "shelter") {
       // Triangular roof
-      gfx.moveTo(cx, by + pad - 3)
+      gfx
+        .moveTo(cx, by + pad - 3)
         .lineTo(bx + pad - 1, by + pad + size * 0.35)
         .lineTo(bx + pad + size + 1, by + pad + size * 0.35)
         .closePath()
@@ -746,12 +863,16 @@ export class GameWorld {
       // Crop rows
       for (let i = 0; i < 3; i++) {
         const ry = by + pad + size * 0.3 + i * size * 0.22;
-        gfx.moveTo(bx + pad + 3, ry).lineTo(bx + pad + size - 3, ry)
+        gfx
+          .moveTo(bx + pad + 3, ry)
+          .lineTo(bx + pad + size - 3, ry)
           .stroke({ color: 0x84cc16, width: 1.5, alpha: 0.6 });
       }
     } else if (type === "market") {
       // Market stall top
-      gfx.rect(bx + pad - 1, by + pad, size + 2, size * 0.15).fill({ color: 0x0ea5e9, alpha: 0.6 });
+      gfx
+        .rect(bx + pad - 1, by + pad, size + 2, size * 0.15)
+        .fill({ color: 0x0ea5e9, alpha: 0.6 });
     }
   }
 
@@ -769,7 +890,9 @@ export class GameWorld {
 
     // Shadow
     const shadow = new Graphics();
-    shadow.ellipse(0, ts * 0.22, ts * 0.2, ts * 0.07).fill({ color: 0x000000, alpha: 0.2 });
+    shadow
+      .ellipse(0, ts * 0.22, ts * 0.2, ts * 0.07)
+      .fill({ color: 0x000000, alpha: 0.2 });
     container.addChild(shadow);
 
     // Body (pixel-art-ish character)
@@ -802,8 +925,14 @@ export class GameWorld {
     this.agentContainer!.addChild(container);
 
     return {
-      container, body, shadow, statusIcon, label, actionLabel,
-      targetX: px, targetY: py,
+      container,
+      body,
+      shadow,
+      statusIcon,
+      label,
+      actionLabel,
+      targetX: px,
+      targetY: py,
       lastStatus: agent.status,
       animFrame: 0,
       animTimer: 0,
@@ -848,11 +977,16 @@ export class GameWorld {
     gfx.rect(s * 0.3, -s * 2.2, s * 0.5, s * 0.5).fill(0x1a1a2e);
 
     // Legs (2 pixels)
-    gfx.rect(-s * 1.2, s * 2.5, s * 1.2, s * 1.2).fill({ color: 0x374151, alpha: 0.9 });
-    gfx.rect(s * 0, s * 2.5, s * 1.2, s * 1.2).fill({ color: 0x374151, alpha: 0.9 });
+    gfx
+      .rect(-s * 1.2, s * 2.5, s * 1.2, s * 1.2)
+      .fill({ color: 0x374151, alpha: 0.9 });
+    gfx
+      .rect(s * 0, s * 2.5, s * 1.2, s * 1.2)
+      .fill({ color: 0x374151, alpha: 0.9 });
 
     // White outline for visibility
-    gfx.roundRect(-s * 2.2, -s * 4.6, s * 4.4, s * 7.5, 1)
+    gfx
+      .roundRect(-s * 2.2, -s * 4.6, s * 4.4, s * 7.5, 1)
       .stroke({ color: 0xffffff, width: 0.8, alpha: 0.3 });
   }
 
@@ -862,7 +996,9 @@ export class GameWorld {
     const s = 4;
     // Draw a small colored indicator dot
     sprite.statusIcon.circle(0, 0, s).fill({ color: info.color, alpha: 0.9 });
-    sprite.statusIcon.circle(0, 0, s).stroke({ color: 0xffffff, width: 0.5, alpha: 0.5 });
+    sprite.statusIcon
+      .circle(0, 0, s)
+      .stroke({ color: 0xffffff, width: 0.5, alpha: 0.5 });
   }
 
   private updateActionLabel(sprite: AgentSprite, status: string): void {
@@ -915,7 +1051,11 @@ export class GameWorld {
       if (sprite) {
         const bgWidth = bubble.container.width;
         bubble.container.x = sprite.container.x - bgWidth / 2;
-        bubble.container.y = sprite.container.y - this.tileSize * 1.2 - bubble.container.height - 6;
+        bubble.container.y =
+          sprite.container.y -
+          this.tileSize * 1.2 -
+          bubble.container.height -
+          6;
       }
 
       if (elapsed > bubble.duration - 500) {
@@ -940,9 +1080,10 @@ export class GameWorld {
         this.transferAnimations.splice(i, 1);
         continue;
       }
-      const t = anim.progress < 0.5
-        ? 2 * anim.progress * anim.progress
-        : 1 - Math.pow(-2 * anim.progress + 2, 2) / 2;
+      const t =
+        anim.progress < 0.5
+          ? 2 * anim.progress * anim.progress
+          : 1 - Math.pow(-2 * anim.progress + 2, 2) / 2;
       anim.gfx.x = anim.fromX + (anim.toX - anim.fromX) * t;
       anim.gfx.y = anim.fromY + (anim.toY - anim.fromY) * t;
       anim.gfx.y -= Math.sin(t * Math.PI) * 15;
@@ -972,28 +1113,59 @@ export class GameWorld {
   private setupControls(canvas: HTMLCanvasElement): void {
     const signal = this._abortController.signal;
 
-    canvas.addEventListener("pointerdown", (e) => {
-      this.isDragging = true;
-      this.dragStart = { x: e.clientX, y: e.clientY };
-      this.cameraStart = { ...this.camera };
-    }, { signal });
+    canvas.addEventListener(
+      "pointerdown",
+      (e) => {
+        this.isDragging = true;
+        this.dragStart = { x: e.clientX, y: e.clientY };
+        this.cameraStart = { ...this.camera };
+      },
+      { signal },
+    );
 
-    canvas.addEventListener("pointermove", (e) => {
-      if (!this.isDragging) return;
-      this.camera.x = this.cameraStart.x - (e.clientX - this.dragStart.x) / this.camera.zoom;
-      this.camera.y = this.cameraStart.y - (e.clientY - this.dragStart.y) / this.camera.zoom;
-      this.updateCamera();
-    }, { signal });
+    canvas.addEventListener(
+      "pointermove",
+      (e) => {
+        if (!this.isDragging) return;
+        this.camera.x =
+          this.cameraStart.x -
+          (e.clientX - this.dragStart.x) / this.camera.zoom;
+        this.camera.y =
+          this.cameraStart.y -
+          (e.clientY - this.dragStart.y) / this.camera.zoom;
+        this.updateCamera();
+      },
+      { signal },
+    );
 
-    canvas.addEventListener("pointerup", () => { this.isDragging = false; }, { signal });
-    canvas.addEventListener("pointerleave", () => { this.isDragging = false; }, { signal });
+    canvas.addEventListener(
+      "pointerup",
+      () => {
+        this.isDragging = false;
+      },
+      { signal },
+    );
+    canvas.addEventListener(
+      "pointerleave",
+      () => {
+        this.isDragging = false;
+      },
+      { signal },
+    );
 
-    canvas.addEventListener("wheel", (e) => {
-      e.preventDefault();
-      const factor = e.deltaY > 0 ? 0.9 : 1.1;
-      this.camera.zoom = Math.max(0.3, Math.min(4, this.camera.zoom * factor));
-      this.updateCamera();
-    }, { passive: false, signal });
+    canvas.addEventListener(
+      "wheel",
+      (e) => {
+        e.preventDefault();
+        const factor = e.deltaY > 0 ? 0.9 : 1.1;
+        this.camera.zoom = Math.max(
+          0.3,
+          Math.min(4, this.camera.zoom * factor),
+        );
+        this.updateCamera();
+      },
+      { passive: false, signal },
+    );
   }
 
   private updateCamera(): void {
@@ -1009,12 +1181,18 @@ export class GameWorld {
     const halfViewH = viewH / 2;
 
     if (viewW < worldW) {
-      this.camera.x = Math.max(halfViewW, Math.min(worldW - halfViewW, this.camera.x));
+      this.camera.x = Math.max(
+        halfViewW,
+        Math.min(worldW - halfViewW, this.camera.x),
+      );
     } else {
       this.camera.x = worldW / 2;
     }
     if (viewH < worldH) {
-      this.camera.y = Math.max(halfViewH, Math.min(worldH - halfViewH, this.camera.y));
+      this.camera.y = Math.max(
+        halfViewH,
+        Math.min(worldH - halfViewH, this.camera.y),
+      );
     } else {
       this.camera.y = worldH / 2;
     }
@@ -1038,6 +1216,13 @@ export class GameWorld {
     return t * t * 0.4; // ease-in
   }
 
+  /** Force PixiJS to re-measure its container and update the camera. */
+  public resize(): void {
+    if (!this._initialized || !this.app) return;
+    this.app.resize();
+    this.updateCamera();
+  }
+
   private centerCamera(): void {
     this.camera.x = (this.mapWidth * this.tileSize) / 2;
     this.camera.y = (this.mapHeight * this.tileSize) / 2;
@@ -1046,9 +1231,18 @@ export class GameWorld {
   }
 
   private adjustBrightness(color: number, amount: number): number {
-    const r = Math.min(255, Math.max(0, ((color >> 16) & 0xff) + Math.round(amount * 255)));
-    const g = Math.min(255, Math.max(0, ((color >> 8) & 0xff) + Math.round(amount * 255)));
-    const b = Math.min(255, Math.max(0, (color & 0xff) + Math.round(amount * 255)));
+    const r = Math.min(
+      255,
+      Math.max(0, ((color >> 16) & 0xff) + Math.round(amount * 255)),
+    );
+    const g = Math.min(
+      255,
+      Math.max(0, ((color >> 8) & 0xff) + Math.round(amount * 255)),
+    );
+    const b = Math.min(
+      255,
+      Math.max(0, (color & 0xff) + Math.round(amount * 255)),
+    );
     return (r << 16) | (g << 8) | b;
   }
 }
