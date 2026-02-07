@@ -484,6 +484,126 @@ export const checkInventory = internalMutation({
   },
 });
 
+// --- Conflict Mechanics (Tier 3) ---
+
+export const confrontAgent = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    targetName: v.string(),
+    grievance: v.string(),
+  },
+  handler: async (ctx, { agentId, targetName, grievance }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    const allAgents = await ctx.db.query("agents").collect();
+    const target = allAgents.find(
+      (a) =>
+        a.name.toLowerCase() === targetName.toLowerCase() &&
+        Math.abs(a.position.x - agent.position.x) <= 6 &&
+        Math.abs(a.position.y - agent.position.y) <= 6,
+    );
+    if (!target) return `${targetName} is not nearby.`;
+
+    const world = await ctx.db.query("worldState").first();
+    const tick = world?.tick ?? 0;
+
+    // Both parties lose trust/affinity
+    await updateRelationship(ctx, agentId, target._id, -0.1, -0.08, tick);
+    await updateRelationship(ctx, target._id, agentId, -0.1, -0.08, tick);
+
+    // Target remembers being confronted
+    await ctx.db.insert("memories", {
+      agentId: target._id,
+      type: "observation",
+      content: `${agent.name} confronted me: "${grievance}"`,
+      importance: 7,
+      tick,
+    });
+
+    // Agent remembers confronting
+    await ctx.db.insert("memories", {
+      agentId,
+      type: "observation",
+      content: `I confronted ${target.name} about: "${grievance}"`,
+      importance: 5,
+      tick,
+    });
+
+    // Leadership skill determines outcome visibility
+    const agentLead = agent.skills.leadership;
+    const targetLead = target.skills.leadership;
+    const outcome = agentLead >= targetLead
+      ? `${agent.name} stood firm against ${target.name}`
+      : `${target.name} was unmoved by ${agent.name}'s confrontation`;
+
+    await ctx.db.insert("worldEvents", {
+      type: "conflict",
+      description: `${agent.name} confronted ${target.name}: "${grievance}". ${outcome}.`,
+      involvedAgentIds: [agentId, target._id],
+      tick,
+    });
+
+    return `You confronted ${target.name}. ${outcome}.`;
+  },
+});
+
+export const claimTerritory = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    reason: v.string(),
+  },
+  handler: async (ctx, { agentId, reason }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    const world = await ctx.db.query("worldState").first();
+    const tick = world?.tick ?? 0;
+    const { x, y } = agent.position;
+
+    // Check for buildings from other agents in the 3x3 area
+    const buildings = await ctx.db.query("buildings").collect();
+    const contested = buildings.filter(
+      (b) =>
+        Math.abs(b.posX - x) <= 1 &&
+        Math.abs(b.posY - y) <= 1 &&
+        b.ownerId && b.ownerId !== agentId,
+    );
+
+    if (contested.length > 0) {
+      const ownerIds = [...new Set(contested.map((b) => b.ownerId!))];
+      for (const ownerId of ownerIds) {
+        await updateRelationship(ctx, agentId, ownerId, -0.08, -0.05, tick);
+        await ctx.db.insert("memories", {
+          agentId: ownerId,
+          type: "observation",
+          content: `${agent.name} is claiming territory near my buildings at (${x}, ${y})!`,
+          importance: 7,
+          tick,
+        });
+      }
+
+      await ctx.db.insert("worldEvents", {
+        type: "territory",
+        description: `${agent.name} claimed territory at (${x}, ${y}), disputing existing buildings. Reason: ${reason}`,
+        involvedAgentIds: [agentId, ...ownerIds],
+        tick,
+      });
+
+      return `Claimed territory at (${x}, ${y}). ${contested.length} disputed buildings from other agents.`;
+    }
+
+    await ctx.db.insert("worldEvents", {
+      type: "territory",
+      description: `${agent.name} claimed territory at (${x}, ${y}). Reason: ${reason}`,
+      involvedAgentIds: [agentId],
+      tick,
+    });
+
+    return `Claimed territory around (${x}, ${y}).`;
+  },
+});
+
 // --- Building Repair (Tier 2) ---
 
 export const repairBuilding = internalMutation({

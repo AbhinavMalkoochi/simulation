@@ -264,6 +264,34 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
       },
     }),
 
+    confront: tool({
+      description: "Confront a nearby agent about a grievance (territory dispute, resource theft, broken promise, etc.). This damages your relationship.",
+      inputSchema: z.object({
+        targetName: z.string().describe("Person to confront"),
+        grievance: z.string().describe("What you are confronting them about"),
+      }),
+      execute: async ({ targetName, grievance }) => {
+        return ctx.runMutation(internal.agents.actions.confrontAgent, {
+          agentId,
+          targetName,
+          grievance,
+        });
+      },
+    }),
+
+    claimTerritory: tool({
+      description: "Claim the area around your current position as your territory. May cause disputes if others have buildings nearby.",
+      inputSchema: z.object({
+        reason: z.string().describe("Why you are claiming this territory"),
+      }),
+      execute: async ({ reason }) => {
+        return ctx.runMutation(internal.agents.actions.claimTerritory, {
+          agentId,
+          reason,
+        });
+      },
+    }),
+
     repairBuilding: tool({
       description: "Repair the building at your current location. Costs 2 wood + 1 stone, restores 20 condition.",
       inputSchema: z.object({}),
