@@ -1,4 +1,5 @@
 import type { MutationCtx } from "../_generated/server";
+import { RESOURCES } from "../lib/constants";
 
 const WEATHER_TRANSITIONS: Record<string, Array<{ next: string; weight: number }>> = {
   clear: [
@@ -34,10 +35,16 @@ export function nextWeather(current: string, rand: () => number): string {
 }
 
 export async function regenerateResources(ctx: MutationCtx): Promise<void> {
+  const world = await ctx.db.query("worldState").first();
+  const season = (world?.season ?? "spring") as keyof typeof RESOURCES.SEASON_MULTIPLIER;
+  const multipliers = RESOURCES.SEASON_MULTIPLIER[season];
+
   const resources = await ctx.db.query("resources").collect();
   for (const r of resources) {
     if (r.quantity < r.maxQuantity) {
-      const newQuantity = Math.min(r.maxQuantity, r.quantity + r.regenRate);
+      const seasonMultiplier = multipliers[r.type as keyof typeof multipliers] ?? 1.0;
+      const effectiveRate = r.regenRate * seasonMultiplier;
+      const newQuantity = Math.min(r.maxQuantity, r.quantity + effectiveRate);
       await ctx.db.patch(r._id, { quantity: newQuantity });
     }
   }

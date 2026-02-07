@@ -1,5 +1,5 @@
 import { mutation } from "./_generated/server";
-import { MAP_WIDTH, MAP_HEIGHT, MAP_SEED, TILE_SIZE } from "./lib/constants";
+import { MAP_WIDTH, MAP_HEIGHT, MAP_SEED, TILE_SIZE, RESOURCES } from "./lib/constants";
 import { generateMap, isWalkable } from "./lib/mapgen";
 import { seededRandom } from "./lib/utils";
 
@@ -118,38 +118,38 @@ export const seedWorld = mutation({
     for (let y = 0; y < MAP_HEIGHT; y++) {
       for (let x = 0; x < MAP_WIDTH; x++) {
         const tile = mapTiles[y * MAP_WIDTH + x];
-        const resourceType = TILE_RESOURCE[tile];
-        if (resourceType && rand() < 0.15) {
+        const resourceType = TILE_RESOURCE[tile] as keyof typeof RESOURCES.SPAWN_CHANCE | undefined;
+        if (resourceType && rand() < RESOURCES.SPAWN_CHANCE[resourceType]) {
           await ctx.db.insert("resources", {
             tileX: x,
             tileY: y,
             type: resourceType as "wood" | "stone" | "food" | "metal" | "herbs",
-            quantity: 3 + Math.floor(rand() * 5),
-            maxQuantity: 8,
-            regenRate: 0.2,
+            quantity: 2 + Math.floor(rand() * 4),
+            maxQuantity: 6,
+            regenRate: 0.15,
           });
         }
 
-        if (tile === 2 && rand() < 0.05) {
+        if (tile === 2 && rand() < RESOURCES.SPAWN_CHANCE.food) {
           const rType = rand() < 0.5 ? "food" : "herbs";
           await ctx.db.insert("resources", {
             tileX: x,
             tileY: y,
             type: rType as "food" | "herbs",
-            quantity: 2 + Math.floor(rand() * 4),
-            maxQuantity: 6,
-            regenRate: 0.3,
+            quantity: 1 + Math.floor(rand() * 3),
+            maxQuantity: 5,
+            regenRate: 0.2,
           });
         }
 
-        if (tile === 4 && rand() < 0.03) {
+        if (tile === 4 && rand() < RESOURCES.SPAWN_CHANCE.metal) {
           await ctx.db.insert("resources", {
             tileX: x,
             tileY: y,
             type: "metal",
-            quantity: 1 + Math.floor(rand() * 3),
-            maxQuantity: 4,
-            regenRate: 0.05,
+            quantity: 1 + Math.floor(rand() * 2),
+            maxQuantity: 3,
+            regenRate: 0.03,
           });
         }
       }
