@@ -440,6 +440,68 @@ export const checkInventory = internalMutation({
   },
 });
 
+// --- Seek Agent (Tier 1) ---
+
+export const seekAgentAction = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    targetName: v.string(),
+  },
+  handler: async (ctx, { agentId, targetName }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    const allAgents = await ctx.db.query("agents").collect();
+    const target = allAgents.find(
+      (a) => a.name.toLowerCase() === targetName.toLowerCase() && a._id !== agentId,
+    );
+    if (!target) return `No one named ${targetName} exists.`;
+
+    // If target is within perception range, pathfind directly
+    const dx = Math.abs(target.position.x - agent.position.x);
+    const dy = Math.abs(target.position.y - agent.position.y);
+    if (dx <= 6 && dy <= 6) {
+      // Target visible — move adjacent to them
+      const world = await ctx.db.query("worldState").first();
+      if (!world) return "World not found.";
+      const mapTiles = generateMap(world.mapSeed, world.mapWidth, world.mapHeight);
+      const path = findPath(agent.position, target.position, mapTiles, world.mapWidth, world.mapHeight);
+      if (path.length < 2) return `Can't reach ${targetName} from here.`;
+      await ctx.db.patch(agentId, {
+        targetPosition: target.position,
+        path: path.slice(1),
+        status: "moving",
+      });
+      return `${targetName} is nearby! Moving toward them (${path.length - 1} steps).`;
+    }
+
+    // Check last known location from relationship
+    const relationship = await ctx.db
+      .query("relationships")
+      .withIndex("by_pair", (q) => q.eq("agentId", agentId).eq("targetAgentId", target._id))
+      .first();
+
+    if (relationship?.lastSeenPosition) {
+      const world = await ctx.db.query("worldState").first();
+      if (!world) return "World not found.";
+      const mapTiles = generateMap(world.mapSeed, world.mapWidth, world.mapHeight);
+      const path = findPath(agent.position, relationship.lastSeenPosition, mapTiles, world.mapWidth, world.mapHeight);
+      if (path.length < 2) return `Can't find a path to ${targetName}'s last known location.`;
+      await ctx.db.patch(agentId, {
+        targetPosition: relationship.lastSeenPosition,
+        path: path.slice(1),
+        status: "moving",
+      });
+      const ticksAgo = relationship.lastSeenTick
+        ? (await ctx.db.query("worldState").first())?.tick ?? 0 - relationship.lastSeenTick
+        : "unknown";
+      return `Heading to ${targetName}'s last known location at (${relationship.lastSeenPosition.x}, ${relationship.lastSeenPosition.y}), last seen ${ticksAgo} ticks ago.`;
+    }
+
+    return `You don't know where ${targetName} is. Try exploring to find them.`;
+  },
+});
+
 // --- Plan Lock (Tier 1) ---
 
 export const commitToPlan = internalMutation({

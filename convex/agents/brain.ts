@@ -264,6 +264,19 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
       },
     }),
 
+    seekAgent: tool({
+      description: "Move toward a specific person. Uses their current position if visible, or their last known location if not.",
+      inputSchema: z.object({
+        targetName: z.string().describe("Name of the person to find"),
+      }),
+      execute: async ({ targetName }) => {
+        return ctx.runMutation(internal.agents.actions.seekAgentAction, {
+          agentId,
+          targetName,
+        });
+      },
+    }),
+
     commitToPlan: tool({
       description: "Commit to a multi-step plan. Each step will be executed in order across multiple think cycles. Use this for goals requiring multiple sequential actions (e.g. gather materials, craft, build).",
       inputSchema: z.object({
