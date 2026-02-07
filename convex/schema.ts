@@ -51,6 +51,10 @@ export default defineSchema({
     }),
     currentPlan: v.optional(v.string()),
     currentAction: v.optional(v.string()),
+    // Multi-step plan lock (Tier 1)
+    planSteps: v.optional(v.array(v.string())),
+    planStep: v.optional(v.number()),
+    planStartTick: v.optional(v.number()),
     status: v.union(
       v.literal("idle"),
       v.literal("moving"),
@@ -91,6 +95,9 @@ export default defineSchema({
     affinity: v.number(),
     interactionCount: v.number(),
     lastInteractionTick: v.number(),
+    // Last seen location memory (Tier 1)
+    lastSeenPosition: v.optional(position),
+    lastSeenTick: v.optional(v.number()),
   })
     .index("by_agent", ["agentId"])
     .index("by_pair", ["agentId", "targetAgentId"]),
@@ -116,6 +123,8 @@ export default defineSchema({
     agentId: v.id("agents"),
     itemType: v.string(),
     quantity: v.number(),
+    // Tool durability (Tier 2) — null/undefined = infinite uses
+    durability: v.optional(v.number()),
   })
     .index("by_agent", ["agentId"])
     .index("by_agent_item", ["agentId", "itemType"]),
@@ -204,4 +213,20 @@ export default defineSchema({
   })
     .index("by_tick", ["tick"])
     .index("by_type", ["type"]),
+
+  // Alliance shared storage (Tier 3)
+  buildingInventory: defineTable({
+    buildingId: v.id("buildings"),
+    itemType: v.string(),
+    quantity: v.number(),
+  })
+    .index("by_building", ["buildingId"])
+    .index("by_building_item", ["buildingId", "itemType"]),
+
+  // Materialized reputation scores (Tier 3)
+  reputation: defineTable({
+    agentId: v.id("agents"),
+    score: v.number(),
+    lastUpdated: v.number(),
+  }).index("by_agent", ["agentId"]),
 });
