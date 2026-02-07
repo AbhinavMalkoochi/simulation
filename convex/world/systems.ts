@@ -1,5 +1,23 @@
-import type { MutationCtx } from "../_generated/server";
-import { RESOURCES, BUILDING_DECAY_RATE } from "../lib/constants";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { RESOURCES, BUILDING_DECAY_RATE, BUILDING_BONUS } from "../lib/constants";
+
+/** Check if a building of the given type is within bonus range of a position */
+export async function hasBuildingBonus(
+  ctx: QueryCtx | MutationCtx,
+  position: { x: number; y: number },
+  buildingType: keyof typeof BUILDING_BONUS,
+): Promise<boolean> {
+  const range = BUILDING_BONUS[buildingType].range;
+  if (range === 0) return false;
+  const buildings = await ctx.db.query("buildings").collect();
+  return buildings.some(
+    (b) =>
+      b.type === buildingType &&
+      b.condition > 0 &&
+      Math.abs(b.posX - position.x) <= range &&
+      Math.abs(b.posY - position.y) <= range,
+  );
+}
 
 const WEATHER_TRANSITIONS: Record<string, Array<{ next: string; weight: number }>> = {
   clear: [

@@ -5,7 +5,8 @@ import { findPath } from "../engine/pathfinding";
 import { addItem, removeItem, hasItems, getInventory, degradeItem, addItemWithDurability } from "../world/inventory";
 import { findRecipe, BUILDING_COSTS } from "../world/recipes";
 import { updateRelationship } from "../social/relationships";
-import { ENERGY, DURABILITY } from "../lib/constants";
+import { ENERGY, DURABILITY, BUILDING_BONUS } from "../lib/constants";
+import { hasBuildingBonus } from "../world/systems";
 
 export const moveAgent = internalMutation({
   args: {
@@ -280,19 +281,48 @@ export const craftItem = internalMutation({
     for (const input of recipe.inputs) {
       await removeItem(ctx, agentId, input.type, input.quantity);
     }
-    await addItem(ctx, agentId, recipe.output.type, recipe.output.quantity);
 
-    await ctx.db.patch(agentId, { status: "working", energy: Math.max(0, agent.energy - ENERGY.CRAFT_COST) });
+    // Tool bonus: having tools gives +1 output but degrades them
+    let bonusOutput = 0;
+    const hasMetalTools = await hasItems(ctx, agentId, [{ type: "metal_tools", quantity: 1 }]);
+    const hasStoneTools = !hasMetalTools && await hasItems(ctx, agentId, [{ type: "stone_tools", quantity: 1 }]);
+    if (hasMetalTools) {
+      bonusOutput = 1;
+      await degradeItem(ctx, agentId, "metal_tools", 1);
+    } else if (hasStoneTools) {
+      bonusOutput = 1;
+      await degradeItem(ctx, agentId, "stone_tools", 1);
+    }
+
+    // Workshop bonus: reduced energy cost and extra output
+    const nearWorkshop = await hasBuildingBonus(ctx, agent.position, "workshop");
+    if (nearWorkshop) bonusOutput += BUILDING_BONUS.workshop.extraOutput;
+
+    const outputQty = recipe.output.quantity + bonusOutput;
+    const outputType = recipe.output.type;
+
+    // Assign durability to crafted tools
+    const toolDurability = DURABILITY[outputType as keyof typeof DURABILITY];
+    if (toolDurability) {
+      await addItemWithDurability(ctx, agentId, outputType, outputQty, toolDurability);
+    } else {
+      await addItem(ctx, agentId, outputType, outputQty);
+    }
+
+    const craftCost = nearWorkshop
+      ? Math.max(1, ENERGY.CRAFT_COST - BUILDING_BONUS.workshop.craftEnergySave)
+      : ENERGY.CRAFT_COST;
+    await ctx.db.patch(agentId, { status: "working", energy: Math.max(0, agent.energy - craftCost) });
 
     const world = await ctx.db.query("worldState").first();
     await ctx.db.insert("worldEvents", {
       type: "craft",
-      description: `${agent.name} crafted ${recipe.output.quantity} ${recipe.output.type}.`,
+      description: `${agent.name} crafted ${outputQty} ${outputType}.`,
       involvedAgentIds: [agentId],
       tick: world?.tick ?? 0,
     });
 
-    return `Crafted ${recipe.output.quantity} ${recipe.output.type}.`;
+    return `Crafted ${outputQty} ${outputType}${bonusOutput > 0 ? " (bonus!)" : ""}.`;
   },
 });
 

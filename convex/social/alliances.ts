@@ -1,5 +1,7 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import { hasBuildingBonus } from "../world/systems";
+import { BUILDING_BONUS } from "../lib/constants";
 
 export const create = internalMutation({
   args: {
@@ -134,9 +136,21 @@ export const vote = internalMutation({
 
     if (proposal.votes.find((v) => v.agentId === voterId)) return "You already voted.";
 
+    // MeetingHall bonus: votes near a meetingHall count with extra weight
+    const voter = await ctx.db.get(voterId);
+    const nearMeetingHall = voter ? await hasBuildingBonus(ctx, voter.position, "meetingHall") : false;
+    const voteWeight = nearMeetingHall ? 1 + BUILDING_BONUS.meetingHall.voteWeight : 1;
+
     const newVotes = [...proposal.votes, { agentId: voterId, vote: voteValue }];
-    const yesCount = newVotes.filter((v) => v.vote).length;
-    const noCount = newVotes.filter((v) => !v.vote).length;
+    // Count effective votes with weights
+    let yesCount = 0;
+    let noCount = 0;
+    for (const v of newVotes) {
+      const isCurrentVoter = v.agentId === voterId;
+      const weight = isCurrentVoter ? voteWeight : 1;
+      if (v.vote) yesCount += weight;
+      else noCount += weight;
+    }
     const majority = Math.ceil(alliance.memberIds.length / 2);
 
     let newStatus: "pending" | "passed" | "rejected" = "pending";

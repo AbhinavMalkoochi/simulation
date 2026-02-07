@@ -3,7 +3,7 @@ import { internal } from "../_generated/api";
 import { generateMap, isWalkable } from "../lib/mapgen";
 import { seededRandom, formatTime } from "../lib/utils";
 import { findPath } from "./pathfinding";
-import { nextWeather, regenerateResources, applyBuildingEffects, decayBuildings } from "../world/systems";
+import { nextWeather, regenerateResources, applyBuildingEffects, decayBuildings, hasBuildingBonus } from "../world/systems";
 import { ENERGY } from "../lib/constants";
 
 export const run = internalMutation({
@@ -38,7 +38,9 @@ export const run = internalMutation({
       }
 
       if (agent.status === "sleeping") {
-        const newEnergy = Math.min(100, agent.energy + ENERGY.SLEEP_REGEN);
+        const nearShelter = await hasBuildingBonus(ctx, agent.position, "shelter");
+        const regenRate = ENERGY.SLEEP_REGEN + (nearShelter ? ENERGY.SHELTER_BONUS_REGEN : 0);
+        const newEnergy = Math.min(100, agent.energy + regenRate);
         if (newEnergy >= 90) {
           await ctx.db.patch(agent._id, { energy: newEnergy, status: "idle" });
         } else {

@@ -2,6 +2,8 @@ import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { addItem, removeItem, hasItems } from "../world/inventory";
 import { updateRelationship } from "./relationships";
+import { hasBuildingBonus } from "../world/systems";
+import { BUILDING_BONUS, PERCEPTION } from "../lib/constants";
 
 export const propose = internalMutation({
   args: {
@@ -16,12 +18,16 @@ export const propose = internalMutation({
     const initiator = await ctx.db.get(initiatorId);
     if (!initiator) return "Agent not found.";
 
+    // Market building extends trade range
+    const nearMarket = await hasBuildingBonus(ctx, initiator.position, "market");
+    const tradeRange = nearMarket ? BUILDING_BONUS.market.tradeRangeBoost : PERCEPTION.SPEAK_RANGE;
+
     const agents = await ctx.db.query("agents").collect();
     const target = agents.find(
       (a) =>
         a.name.toLowerCase() === targetName.toLowerCase() &&
-        Math.abs(a.position.x - initiator.position.x) <= 6 &&
-        Math.abs(a.position.y - initiator.position.y) <= 6,
+        Math.abs(a.position.x - initiator.position.x) <= tradeRange &&
+        Math.abs(a.position.y - initiator.position.y) <= tradeRange,
     );
     if (!target) return `${targetName} is not nearby.`;
 
