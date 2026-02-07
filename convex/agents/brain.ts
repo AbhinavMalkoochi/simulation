@@ -594,7 +594,7 @@ export const reflect = internalAction({
   },
 });
 
-const MAX_CONVERSATION_EXCHANGES = 3;
+const MAX_CONVERSATION_EXCHANGES = 5;
 
 export const respondToConversation = internalAction({
   args: {

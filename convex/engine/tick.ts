@@ -12,7 +12,7 @@ export const run = internalMutation({
     if (!world || world.paused) return;
 
     const newTick = world.tick + 1;
-    const newTimeOfDay = (world.timeOfDay + 0.5) % 24;
+    const newTimeOfDay = (world.timeOfDay + 0.125) % 24;
 
     await ctx.db.patch(world._id, {
       tick: newTick,
@@ -23,7 +23,29 @@ export const run = internalMutation({
     const rand = seededRandom(newTick + world.mapSeed);
     const agents = await ctx.db.query("agents").collect();
 
+    // Build a set of agent IDs currently in active (open) conversations
+    const openConvs = await ctx.db.query("conversations").order("desc").take(50);
+    const conversingAgentIds = new Set<string>();
+    for (const conv of openConvs) {
+      if (conv.endTick) continue;
+      for (const pid of conv.participantIds) {
+        conversingAgentIds.add(String(pid));
+      }
+    }
+
     for (const agent of agents) {
+      const isConversing = conversingAgentIds.has(String(agent._id));
+
+      // Agents in active conversations stay put — no movement
+      if (isConversing && agent.path && agent.path.length > 0) {
+        await ctx.db.patch(agent._id, {
+          path: undefined,
+          targetPosition: undefined,
+          status: "talking",
+        });
+        continue;
+      }
+
       if (agent.path && agent.path.length > 0) {
         const nextStep = agent.path[0];
         const remaining = agent.path.slice(1);
@@ -76,6 +98,20 @@ export const run = internalMutation({
         continue;
       }
 
+      // Agents in active conversations hold position and stay in "talking" status
+      if (isConversing) {
+        if (agent.status !== "talking") {
+          await ctx.db.patch(agent._id, { status: "talking" });
+        }
+        continue;
+      }
+
+      // Reset talking status to idle once conversation has ended
+      if (agent.status === "talking") {
+        await ctx.db.patch(agent._id, { status: "idle" });
+        continue;
+      }
+
       const shouldThink = newTick % 5 === (Math.abs(agent.spriteSeed) % 5);
       if (shouldThink && agent.status === "idle") {
         const jitterMs = Math.floor(rand() * 3000);
@@ -88,11 +124,6 @@ export const run = internalMutation({
             agentId: agent._id,
           });
         }
-        continue;
-      }
-
-      if (agent.status === "talking") {
-        await ctx.db.patch(agent._id, { status: "idle" });
         continue;
       }
 
@@ -168,8 +199,8 @@ export const run = internalMutation({
       await decayBuildings(ctx);
     }
 
-    // Season transition every 192 ticks (~4 in-game days)
-    if (newTick % 192 === 0 && newTick > 0) {
+    // Season transition every 768 ticks (~4 in-game days at 192 ticks/day)
+    if (newTick % 768 === 0 && newTick > 0) {
       const SEASON_ORDER = ["spring", "summer", "autumn", "winter"] as const;
       const currentIdx = SEASON_ORDER.indexOf(world.season);
       const nextSeason = SEASON_ORDER[(currentIdx + 1) % 4];

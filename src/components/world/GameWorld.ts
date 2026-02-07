@@ -138,7 +138,11 @@ export class GameWorld {
 
     this.setupControls(this.app.canvas as HTMLCanvasElement);
 
-    this.app.ticker.add(() => this.animateAgents());
+    this.app.ticker.add(() => {
+      this.animateAgents();
+      this.animateSpeechBubbles();
+      this.animateTransfers();
+    });
     this._initialized = true;
   }
 
