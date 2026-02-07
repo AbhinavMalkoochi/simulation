@@ -85,7 +85,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
       execute: async ({ resourceType }) => {
         return ctx.runMutation(internal.agents.actions.gatherResource, {
           agentId,
-          resourceType,
+          resourceType: resourceType as "wood" | "stone" | "food" | "metal" | "herbs",
         });
       },
     }),
@@ -111,7 +111,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
       execute: async ({ buildingType }) => {
         return ctx.runMutation(internal.agents.actions.buildStructure, {
           agentId,
-          buildingType,
+          buildingType: buildingType as "shelter" | "workshop" | "market" | "meetingHall" | "farm" | "storehouse",
         });
       },
     }),
@@ -618,7 +618,7 @@ export const respondToConversation = internalAction({
 
     const conv = context.pendingConversations.find((c) => {
       // Match by checking messages — the conversation from context that's active
-      return c.participantIds.includes(String(agentId));
+      return c.participantIds.includes(agentId);
     });
     if (!conv || conv.messages.length === 0) return;
 

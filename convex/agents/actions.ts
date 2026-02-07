@@ -1,4 +1,5 @@
 import { internalMutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { generateMap, isWalkable } from "../lib/mapgen";
 import { findPath } from "../engine/pathfinding";
@@ -458,7 +459,7 @@ export const eatFood = internalMutation({
     if (!agent) return "Agent not found.";
 
     let removed = await removeItem(ctx, agentId, "meal", 1);
-    let energyGain = ENERGY.EAT_MEAL;
+    let energyGain: number = ENERGY.EAT_MEAL;
 
     if (!removed) {
       removed = await removeItem(ctx, agentId, "food", 1);
