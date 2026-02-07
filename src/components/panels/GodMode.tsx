@@ -11,17 +11,15 @@ export function GodMode() {
   const seedWorld = useMutation(api.init.seedWorld);
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-5">
       <div>
-        <h4 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-          Weather Control
-        </h4>
-        <div className="grid grid-cols-2 gap-1">
+        <h4 className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider mb-2">Weather</h4>
+        <div className="grid grid-cols-2 gap-1.5">
           {WEATHERS.map((w) => (
             <button
               key={w}
               onClick={() => changeWeather({ weather: w })}
-              className="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded transition-colors capitalize cursor-pointer"
+              className="px-3 py-2 text-xs bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 rounded-lg transition-colors capitalize cursor-pointer text-neutral-700"
             >
               {w}
             </button>
@@ -30,15 +28,13 @@ export function GodMode() {
       </div>
 
       <div>
-        <h4 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-          Spawn Resource (center of map)
-        </h4>
-        <div className="grid grid-cols-3 gap-1">
+        <h4 className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider mb-2">Spawn Resource</h4>
+        <div className="grid grid-cols-3 gap-1.5">
           {RESOURCES.map((r) => (
             <button
               key={r}
-              onClick={() => spawnResource({ tileX: 25, tileY: 25, type: r, quantity: 5 })}
-              className="px-2 py-1.5 text-xs bg-slate-800 hover:bg-slate-700 rounded transition-colors capitalize cursor-pointer"
+              onClick={() => spawnResource({ tileX: 40, tileY: 40, type: r, quantity: 5 })}
+              className="px-2 py-2 text-xs bg-neutral-50 hover:bg-neutral-100 border border-neutral-200 rounded-lg transition-colors capitalize cursor-pointer text-neutral-700"
             >
               {r}
             </button>
@@ -46,10 +42,8 @@ export function GodMode() {
         </div>
       </div>
 
-      <div className="pt-2 border-t border-slate-800">
-        <h4 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-          Danger Zone
-        </h4>
+      <div className="pt-3 border-t border-neutral-100">
+        <h4 className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider mb-2">Danger Zone</h4>
         <button
           onClick={async () => {
             if (confirm("This will destroy the current world. Continue?")) {
@@ -57,7 +51,7 @@ export function GodMode() {
               await seedWorld();
             }
           }}
-          className="w-full px-2 py-1.5 text-xs bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded transition-colors cursor-pointer"
+          className="w-full px-3 py-2 text-xs border border-red-200 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
         >
           Reset World
         </button>

@@ -135,9 +135,9 @@ export function SocialGraph({ agents, relationships, alliances }: SocialGraphPro
         const a = nodeMap.get(rel.agentId);
         const b = nodeMap.get(rel.targetAgentId);
         if (!a || !b) continue;
-        const alpha = Math.min(0.6, 0.1 + rel.interactionCount * 0.05);
-        ctx.strokeStyle = rel.trust > 0.2 ? `rgba(74,222,128,${alpha})` : rel.trust < -0.2 ? `rgba(239,68,68,${alpha})` : `rgba(148,163,184,${alpha})`;
-        ctx.lineWidth = Math.min(3, 0.5 + rel.interactionCount * 0.3);
+        const alpha = Math.min(0.5, 0.08 + rel.interactionCount * 0.04);
+        ctx.strokeStyle = rel.trust > 0.2 ? `rgba(34,197,94,${alpha})` : rel.trust < -0.2 ? `rgba(239,68,68,${alpha})` : `rgba(163,163,163,${alpha})`;
+        ctx.lineWidth = Math.min(2.5, 0.5 + rel.interactionCount * 0.25);
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(b.x, b.y);
@@ -146,17 +146,14 @@ export function SocialGraph({ agents, relationships, alliances }: SocialGraphPro
 
       for (const node of nodes) {
         ctx.beginPath();
-        ctx.arc(node.x, node.y, 8, 0, Math.PI * 2);
+        ctx.arc(node.x, node.y, 7, 0, Math.PI * 2);
         ctx.fillStyle = node.color;
         ctx.fill();
-        ctx.strokeStyle = "rgba(255,255,255,0.3)";
-        ctx.lineWidth = 1;
-        ctx.stroke();
 
-        ctx.font = "9px Inter, sans-serif";
-        ctx.fillStyle = "#94a3b8";
+        ctx.font = "500 9px Inter, sans-serif";
+        ctx.fillStyle = "#737373";
         ctx.textAlign = "center";
-        ctx.fillText(node.name, node.x, node.y + 18);
+        ctx.fillText(node.name, node.x, node.y + 16);
       }
     }
 
@@ -171,16 +168,16 @@ export function SocialGraph({ agents, relationships, alliances }: SocialGraphPro
   }, [agents, relationships]);
 
   return (
-    <div className="flex flex-col gap-2">
-      <canvas ref={canvasRef} className="w-full h-48 bg-slate-900/50 rounded" />
+    <div className="flex flex-col gap-3">
+      <canvas ref={canvasRef} className="w-full h-48 bg-neutral-50 rounded-lg border border-neutral-100" />
       {alliances.length > 0 && (
         <div>
-          <h4 className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Alliances</h4>
+          <h4 className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider mb-2">Alliances</h4>
           <div className="flex flex-col gap-1">
             {alliances.map((a) => (
-              <div key={a._id} className="px-2 py-1 bg-slate-800/40 rounded text-xs">
-                <span className="text-purple-400 font-medium">{a.name}</span>
-                <span className="text-slate-500 ml-1">({a.memberIds.length} members)</span>
+              <div key={a._id} className="px-3 py-1.5 bg-neutral-50 rounded-lg text-xs border border-neutral-100">
+                <span className="text-neutral-800 font-medium">{a.name}</span>
+                <span className="text-neutral-400 ml-1.5">{a.memberIds.length} members</span>
               </div>
             ))}
           </div>

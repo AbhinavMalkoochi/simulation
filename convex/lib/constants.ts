@@ -1,5 +1,5 @@
-export const MAP_WIDTH = 50;
-export const MAP_HEIGHT = 50;
+export const MAP_WIDTH = 80;
+export const MAP_HEIGHT = 80;
 export const MAP_SEED = 42;
 export const TILE_SIZE = 32;
 

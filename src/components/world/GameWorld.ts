@@ -155,7 +155,7 @@ export class GameWorld {
     this.app = new Application();
     await this.app.init({
       resizeTo: container,
-      backgroundColor: 0x0a0a1a,
+      backgroundColor: 0x2d6b3f,
       antialias: true,
       resolution: window.devicePixelRatio,
       autoDensity: true,
@@ -998,10 +998,31 @@ export class GameWorld {
 
   private updateCamera(): void {
     const { width: w, height: h } = this.app!.screen;
+    const zoom = this.camera.zoom;
+    const worldW = this.mapWidth * this.tileSize;
+    const worldH = this.mapHeight * this.tileSize;
+
+    // Clamp camera so map edges never reveal the void
+    const viewW = w / zoom;
+    const viewH = h / zoom;
+    const halfViewW = viewW / 2;
+    const halfViewH = viewH / 2;
+
+    if (viewW < worldW) {
+      this.camera.x = Math.max(halfViewW, Math.min(worldW - halfViewW, this.camera.x));
+    } else {
+      this.camera.x = worldW / 2;
+    }
+    if (viewH < worldH) {
+      this.camera.y = Math.max(halfViewH, Math.min(worldH - halfViewH, this.camera.y));
+    } else {
+      this.camera.y = worldH / 2;
+    }
+
     const wc = this.worldContainer!;
-    wc.scale.set(this.camera.zoom);
-    wc.x = -this.camera.x * this.camera.zoom + w / 2;
-    wc.y = -this.camera.y * this.camera.zoom + h / 2;
+    wc.scale.set(zoom);
+    wc.x = -this.camera.x * zoom + w / 2;
+    wc.y = -this.camera.y * zoom + h / 2;
   }
 
   private getDarkness(timeOfDay: number): number {

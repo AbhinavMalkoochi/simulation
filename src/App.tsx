@@ -30,23 +30,24 @@ export function App() {
 
   if (worldState === undefined) {
     return (
-      <div className="h-screen flex items-center justify-center bg-slate-950 text-slate-400">
-        <div className="text-lg font-medium animate-pulse">Connecting...</div>
+      <div className="h-screen flex items-center justify-center bg-white">
+        <div className="text-sm font-medium text-neutral-400 animate-pulse tracking-wide">Connecting...</div>
       </div>
     );
   }
 
   if (worldState === null) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-6 bg-slate-950">
-        <h1 className="text-4xl font-bold text-slate-100 tracking-tight">AgentWorld</h1>
-        <p className="text-slate-400 max-w-md text-center leading-relaxed">
-          A living simulation where AI agents build societies, trade resources,
-          form alliances, and develop unique personalities.
-        </p>
+      <div className="h-screen flex flex-col items-center justify-center gap-8 bg-white">
+        <div className="text-center">
+          <h1 className="text-3xl font-semibold text-neutral-900 tracking-tight">AgentWorld</h1>
+          <p className="text-sm text-neutral-500 mt-3 max-w-sm leading-relaxed">
+            A living simulation where AI agents build societies, trade resources, and develop unique personalities.
+          </p>
+        </div>
         <button
           onClick={() => seedWorld()}
-          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-colors cursor-pointer"
+          className="px-8 py-3 bg-neutral-900 hover:bg-neutral-800 text-white text-sm font-medium rounded-full transition-colors cursor-pointer"
         >
           Create World
         </button>
@@ -57,7 +58,7 @@ export function App() {
   const selectedAgent = agents?.find((a) => a._id === effectiveAgentId) ?? null;
 
   return (
-    <div className="h-screen flex flex-col bg-slate-950 text-slate-100">
+    <div className="h-screen flex flex-col bg-neutral-50">
       <Toolbar
         tick={worldState.tick}
         timeOfDay={worldState.timeOfDay}

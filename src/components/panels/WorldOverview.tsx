@@ -11,21 +11,14 @@ function formatTime(timeOfDay: number): string {
   return `${h12}:${String(minutes).padStart(2, "0")} ${period}`;
 }
 
-function getTimeEmoji(timeOfDay: number): string {
-  if (timeOfDay >= 6 && timeOfDay < 10) return "🌅";
-  if (timeOfDay >= 10 && timeOfDay < 17) return "☀️";
-  if (timeOfDay >= 17 && timeOfDay < 20) return "🌇";
-  return "🌙";
-}
-
-function getWeatherEmoji(weather: string): string {
-  const map: Record<string, string> = { clear: "☀️", rain: "🌧️", storm: "⛈️", fog: "🌫️" };
-  return map[weather] ?? "🌤️";
-}
-
-function getSeasonEmoji(season: string): string {
-  const map: Record<string, string> = { spring: "🌸", summer: "☀️", autumn: "🍂", winter: "❄️" };
-  return map[season] ?? "🌿";
+function Stat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+  return (
+    <div className="flex flex-col">
+      <span className="text-[10px] text-neutral-400 tracking-wide">{label}</span>
+      <span className="text-lg font-semibold text-neutral-900 leading-tight">{value}</span>
+      {sub && <span className="text-[10px] text-neutral-400">{sub}</span>}
+    </div>
+  );
 }
 
 interface WorldOverviewProps {
@@ -61,53 +54,36 @@ export function WorldOverview({
     : 0;
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Time & Day */}
-      <div className="bg-slate-800/40 rounded-lg p-3">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-semibold text-slate-100">
-            {getTimeEmoji(timeOfDay)} Day {day}
-          </h3>
+    <div className="flex flex-col gap-6">
+      {/* Day header */}
+      <div>
+        <div className="flex items-baseline justify-between">
+          <h3 className="text-2xl font-semibold text-neutral-900 tracking-tight">Day {day}</h3>
           {paused && (
-            <span className="px-1.5 py-0.5 text-[9px] font-bold bg-amber-600 text-white rounded">
-              PAUSED
-            </span>
+            <span className="text-[10px] font-medium text-neutral-400 uppercase tracking-widest">Paused</span>
           )}
         </div>
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="bg-slate-800/60 rounded px-2 py-1.5">
-            <div className="text-[10px] text-slate-500">Time</div>
-            <div className="text-xs font-mono text-slate-200">{formatTime(timeOfDay)}</div>
-          </div>
-          <div className="bg-slate-800/60 rounded px-2 py-1.5">
-            <div className="text-[10px] text-slate-500">Season</div>
-            <div className="text-xs text-slate-200">{getSeasonEmoji(season)} {season}</div>
-          </div>
-          <div className="bg-slate-800/60 rounded px-2 py-1.5">
-            <div className="text-[10px] text-slate-500">Weather</div>
-            <div className="text-xs text-slate-200">{getWeatherEmoji(weather)} {weather}</div>
-          </div>
-        </div>
+        <p className="text-sm text-neutral-500 mt-0.5 capitalize">
+          {season} &middot; {formatTime(timeOfDay)} &middot; {weather}
+        </p>
       </div>
 
-      {/* Population */}
-      <div className="bg-slate-800/40 rounded-lg p-3">
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Population</h3>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-slate-800/60 rounded px-2 py-1.5 text-center">
-            <div className="text-lg font-bold text-slate-100">{agents.length}</div>
-            <div className="text-[10px] text-slate-500">Agents</div>
-          </div>
-          <div className="bg-slate-800/60 rounded px-2 py-1.5 text-center">
-            <div className="text-lg font-bold text-amber-400">{avgEnergy}%</div>
-            <div className="text-[10px] text-slate-500">Avg Energy</div>
-          </div>
-        </div>
-        <div className="mt-2 flex flex-wrap gap-1">
+      {/* Stats row */}
+      <div className="grid grid-cols-4 gap-4">
+        <Stat label="Agents" value={agents.length} />
+        <Stat label="Energy" value={`${avgEnergy}%`} />
+        <Stat label="Buildings" value={buildingCount} />
+        <Stat label="Alliances" value={allianceCount} />
+      </div>
+
+      {/* Status breakdown */}
+      <div>
+        <h4 className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider mb-2">Activity</h4>
+        <div className="flex flex-wrap gap-1.5">
           {Object.entries(statusCounts).map(([status, count]) => (
             <span
               key={status}
-              className="px-1.5 py-0.5 bg-slate-800 rounded text-[10px] text-slate-300"
+              className="px-2 py-1 bg-neutral-100 rounded-md text-[11px] text-neutral-600 capitalize"
             >
               {count} {status}
             </span>
@@ -115,40 +91,25 @@ export function WorldOverview({
         </div>
       </div>
 
-      {/* Community Stats */}
-      <div className="bg-slate-800/40 rounded-lg p-3">
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Community</h3>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-slate-800/60 rounded px-2 py-1.5 text-center">
-            <div className="text-lg font-bold text-cyan-400">{buildingCount}</div>
-            <div className="text-[10px] text-slate-500">Buildings</div>
-          </div>
-          <div className="bg-slate-800/60 rounded px-2 py-1.5 text-center">
-            <div className="text-lg font-bold text-purple-400">{allianceCount}</div>
-            <div className="text-[10px] text-slate-500">Alliances</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Agent Mini-list */}
-      <div className="bg-slate-800/40 rounded-lg p-3">
-        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Agents</h3>
+      {/* Agent list */}
+      <div>
+        <h4 className="text-[10px] font-medium text-neutral-400 uppercase tracking-wider mb-2">Population</h4>
         <div className="flex flex-col gap-1">
           {agents.map((agent) => (
-            <div key={agent._id} className="flex items-center gap-2 text-[10px]">
+            <div key={agent._id} className="flex items-center gap-2.5 py-0.5">
               <div
                 className="w-2 h-2 rounded-full shrink-0"
                 style={{ backgroundColor: agentColorHex(agent.spriteSeed) }}
               />
-              <span className="text-slate-300 flex-1 truncate">{agent.name}</span>
-              <span className="text-slate-600 font-mono">{Math.round(agent.energy)}%</span>
-              <span className="text-slate-500">{agent.status}</span>
+              <span className="text-xs text-neutral-700 flex-1">{agent.name}</span>
+              <span className="text-[10px] text-neutral-400 tabular-nums">{Math.round(agent.energy)}%</span>
+              <span className="text-[10px] text-neutral-400 capitalize w-14 text-right">{agent.status}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="text-[10px] text-slate-600 font-mono text-center">
+      <div className="text-[10px] text-neutral-300 font-mono text-center pt-2">
         tick {tick}
       </div>
     </div>

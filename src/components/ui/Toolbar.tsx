@@ -11,13 +11,6 @@ interface ToolbarProps {
   onToggleDirector: () => void;
 }
 
-const WEATHER_ICONS: Record<string, string> = {
-  clear: "☀",
-  rain: "🌧",
-  storm: "⛈",
-  fog: "🌫",
-};
-
 export function Toolbar({
   tick,
   timeOfDay,
@@ -29,35 +22,33 @@ export function Toolbar({
   onToggleDirector,
 }: ToolbarProps) {
   return (
-    <header className="flex items-center justify-between px-4 py-2 bg-slate-900/80 border-b border-slate-800 backdrop-blur-sm">
-      <div className="flex items-center gap-3">
-        <h1 className="text-sm font-bold tracking-wide text-emerald-400">AGENTWORLD</h1>
-        <span className="w-px h-4 bg-slate-700" />
+    <header className="flex items-center justify-between px-5 py-2.5 bg-white/90 border-b border-neutral-200 backdrop-blur-md z-10">
+      <div className="flex items-center gap-4">
+        <h1 className="text-xs font-semibold tracking-widest text-neutral-900 uppercase">AgentWorld</h1>
+        <div className="w-px h-4 bg-neutral-200" />
         <button
           onClick={onTogglePause}
-          className="px-3 py-1 text-xs font-medium rounded bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+          className="px-4 py-1.5 text-xs font-medium rounded-full border border-neutral-200 hover:bg-neutral-100 transition-colors cursor-pointer text-neutral-700"
         >
-          {paused ? "▶ Play" : "⏸ Pause"}
+          {paused ? "Play" : "Pause"}
         </button>
         <button
           onClick={onToggleDirector}
-          className={`px-3 py-1 text-xs font-medium rounded transition-colors cursor-pointer ${
+          className={`px-4 py-1.5 text-xs font-medium rounded-full transition-colors cursor-pointer ${
             directorMode
-              ? "bg-emerald-700 text-white"
-              : "bg-slate-800 hover:bg-slate-700 text-slate-300"
+              ? "bg-neutral-900 text-white"
+              : "border border-neutral-200 text-neutral-700 hover:bg-neutral-100"
           }`}
         >
-          🎬 Director
+          Director
         </button>
       </div>
 
-      <div className="flex items-center gap-4 text-xs text-slate-400 font-mono">
-        <span>
-          {WEATHER_ICONS[weather] ?? "?"} {weather}
-        </span>
-        <span>{formatTime(timeOfDay)}</span>
-        <span className="text-slate-500">tick {tick}</span>
+      <div className="flex items-center gap-5 text-xs text-neutral-500">
+        <span className="capitalize">{weather}</span>
+        <span className="font-medium text-neutral-700">{formatTime(timeOfDay)}</span>
         <span>{agentCount} agents</span>
+        <span className="text-neutral-400 font-mono text-[10px]">t{tick}</span>
       </div>
     </header>
   );
