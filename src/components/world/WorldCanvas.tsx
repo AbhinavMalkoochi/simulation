@@ -83,7 +83,6 @@ export function WorldCanvas({
       processedEventIds.current.add(event._id);
 
       if (event.type === "conversation" && event.involvedAgentIds.length >= 1) {
-        // Extract the speech from description: "X said to Y: "message""
         const match = event.description.match(/said to .+?: "(.+?)"/);
         if (match) {
           w.showSpeechBubble(event.involvedAgentIds[0], match[1]);
@@ -92,6 +91,19 @@ export function WorldCanvas({
 
       if ((event.type === "trade" || event.type === "gift") && event.involvedAgentIds.length >= 2) {
         w.showTransferAnimation(event.involvedAgentIds[0], event.involvedAgentIds[1]);
+        w.spawnParticles(event.involvedAgentIds[0], 0xfbbf24, 6);
+      }
+
+      if (event.type === "gather" && event.involvedAgentIds.length >= 1) {
+        w.spawnParticles(event.involvedAgentIds[0], 0x22c55e, 4);
+      }
+
+      if (event.type === "craft" && event.involvedAgentIds.length >= 1) {
+        w.spawnParticles(event.involvedAgentIds[0], 0xfbbf24, 5);
+      }
+
+      if (event.type === "build" && event.involvedAgentIds.length >= 1) {
+        w.spawnParticles(event.involvedAgentIds[0], 0x9ca3af, 8);
       }
     }
 
