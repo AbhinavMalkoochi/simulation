@@ -17,6 +17,7 @@ export interface AgentSpriteData {
   readonly status: AgentStatus;
   readonly spriteSeed: number;
   readonly energy: number;
+  readonly currentAction?: string;
 }
 
 export interface ResourceData {

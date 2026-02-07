@@ -68,15 +68,15 @@ const LABEL_STYLE = new TextStyle({
 });
 
 const ACTION_LABEL_STYLE = new TextStyle({
-  fontSize: 7,
-  fill: 0xfbbf24,
+  fontSize: 9,
+  fill: 0xffffff,
   fontFamily: "Inter, sans-serif",
-  fontWeight: "500",
+  fontWeight: "700",
   dropShadow: {
     color: 0x000000,
-    blur: 2,
+    blur: 4,
     distance: 1,
-    alpha: 0.8,
+    alpha: 0.95,
   },
 });
 
@@ -274,11 +274,11 @@ export class GameWorld {
       sprite.targetX = agent.position.x * this.tileSize + this.tileSize / 2;
       sprite.targetY = agent.position.y * this.tileSize + this.tileSize / 2;
 
-      // Update status icon
+      // Update status icon and action label
       if (sprite.lastStatus !== agent.status) {
         sprite.lastStatus = agent.status;
         this.updateStatusIcon(sprite, agent.status);
-        this.updateActionLabel(sprite, agent.status);
+        this.updateActionLabel(sprite, agent.status, agent.currentAction);
       }
     }
   }
@@ -997,24 +997,27 @@ export class GameWorld {
   private updateStatusIcon(sprite: AgentSprite, status: string): void {
     sprite.statusIcon.clear();
     const info = STATUS_ICONS[status] ?? STATUS_ICONS["idle"];
-    const s = 4;
-    // Draw a small colored indicator dot
-    sprite.statusIcon.circle(0, 0, s).fill({ color: info.color, alpha: 0.9 });
+    const s = 5;
+    // Draw a colored indicator dot with white border
+    sprite.statusIcon.circle(0, 0, s).fill({ color: info.color, alpha: 0.95 });
     sprite.statusIcon
       .circle(0, 0, s)
-      .stroke({ color: 0xffffff, width: 0.5, alpha: 0.5 });
+      .stroke({ color: 0xffffff, width: 1, alpha: 0.7 });
   }
 
-  private updateActionLabel(sprite: AgentSprite, status: string): void {
+  private updateActionLabel(sprite: AgentSprite, status: string, currentAction?: string): void {
     const labels: Record<string, string> = {
-      moving: "walking",
-      talking: "chatting",
-      working: "working",
-      sleeping: "zzz",
-      exploring: "exploring",
+      moving: "🚶 walking",
+      talking: "💬 chatting",
+      working: "⚒️ working",
+      sleeping: "💤 sleeping",
+      exploring: "🔍 exploring",
       idle: "",
     };
-    const text = labels[status] ?? "";
+    // Use currentAction if provided and agent is working (more specific)
+    const text = (status === "working" && currentAction)
+      ? `⚒️ ${currentAction}`
+      : (labels[status] ?? "");
     sprite.actionLabel.text = text;
     sprite.actionLabel.alpha = text ? 0.9 : 0;
   }

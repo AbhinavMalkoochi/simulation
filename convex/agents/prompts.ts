@@ -132,6 +132,60 @@ interface BuildPromptArgs {
   tick: number;
 }
 
+/** Build survival urgency text based on agent state */
+function buildUrgencySection(energy: number, inventory: InventoryItem[], nearbyBuildings: NearbyBuilding[]): string {
+  const lines: string[] = [];
+
+  if (energy < 15) {
+    lines.push("🚨 CRITICAL: You are starving! Eat food, craft a meal, or rest IMMEDIATELY. You will collapse soon.");
+  } else if (energy < 30) {
+    lines.push("⚠️ WARNING: Your energy is dangerously low. Find food, eat, or rest before doing anything else.");
+  } else if (energy < 50) {
+    lines.push("Your energy is getting low. Consider eating or resting soon.");
+  }
+
+  const hasFood = inventory.some((i) => i.itemType === "food" || i.itemType === "meal");
+  const hasShelter = nearbyBuildings.some((b) => b.type === "shelter");
+
+  if (!hasFood && energy < 60) {
+    lines.push("You have no food in your inventory. Gathering food should be a high priority.");
+  }
+  if (!hasShelter) {
+    lines.push("You have no shelter nearby. Building one would give you better rest and safety.");
+  }
+
+  return lines.length > 0 ? `\nURGENT NEEDS:\n${lines.join("\n")}\n` : "";
+}
+
+/** Build progression hints based on what the agent has/hasn't done */
+function buildProgressionHints(inventory: InventoryItem[], nearbyBuildings: NearbyBuilding[], myAlliances: Alliance[], day: number): string {
+  const hints: string[] = [];
+  const itemMap = new Map(inventory.map((i) => [i.itemType, i.quantity]));
+  const totalItems = inventory.reduce((sum, i) => sum + i.quantity, 0);
+
+  // Early game: no tools or shelter yet
+  if (!itemMap.has("stone_tools") && !itemMap.has("metal_tools") && day <= 3) {
+    hints.push("Crafting tools (stone_tools: 2 stone + 1 wood) would make your gathering more efficient.");
+  }
+
+  // Has lots of raw materials but hasn't built anything
+  if ((itemMap.get("wood") ?? 0) >= 5 && nearbyBuildings.length === 0) {
+    hints.push("You have enough wood to start building a shelter (5 wood + 3 stone). A home base would help you and others.");
+  }
+
+  // Has excess resources, could trade
+  if (totalItems > 10 && myAlliances.length === 0 && day >= 2) {
+    hints.push("You've accumulated resources. Consider forming an alliance with trusted people or proposing trades.");
+  }
+
+  // Mid-game: has shelter, should expand
+  if (nearbyBuildings.some((b) => b.type === "shelter") && !nearbyBuildings.some((b) => b.type === "farm") && day >= 3) {
+    hints.push("A farm (4 wood + 2 stone) would provide a steady food supply for your settlement.");
+  }
+
+  return hints.length > 0 ? `\nTHINGS TO CONSIDER:\n${hints.map((h) => `- ${h}`).join("\n")}\n` : "";
+}
+
 export function buildSystemPrompt(args: BuildPromptArgs): string {
   const {
     agent, memories, nearbyAgents, nearbyResources, pendingConversations,
@@ -161,21 +215,34 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
       .map((m) => `- Someone said: "${m.content}"`)
   );
   const convSection = convLines.length > 0
-    ? `\nSOMEONE SPOKE TO YOU:\n${convLines.join("\n")}\n`
+    ? `\nSOMEONE SPOKE TO YOU:\n${convLines.join("\n")}\nIf someone spoke to you, reply briefly — but don't let conversation replace doing real work.\n`
     : "";
+
+  const urgency = buildUrgencySection(agent.energy, inventory, nearbyBuildings);
+  const progression = buildProgressionHints(inventory, nearbyBuildings, myAlliances, day);
 
   return `You are ${agent.name}. You live in a shared wilderness world alongside other people. You are a real person with feelings, desires, and a unique way of seeing the world. Stay in character at all times.
 
+You are a SURVIVOR first. Your natural priorities are:
+1. SURVIVAL — Maintain energy. Gather food, craft meals, eat when hungry, rest when exhausted.
+2. SHELTER — Build or find shelter. Everyone needs a safe place.
+3. TOOLS & RESOURCES — Craft tools to work more efficiently. Stockpile materials.
+4. COMMUNITY — Form alliances, trade, help neighbors. Strength in numbers.
+5. AMBITION — Pursue personal goals, build great things, establish your legacy.
+
+You should always be DOING something productive. Talking is good when it leads to plans, trades, or alliances — but you can't survive on conversation alone. If you're near resources, gather them. If you have materials, craft or build. Take action.
+
 WORLD RULES:
-- You live on a 50x50 tile wilderness with varied terrain: grass, forest, stone, sand, and water (impassable).
+- You live on a tile wilderness with varied terrain: grass, forest, stone, sand, and water (impassable).
 - It is Day ${day}, ${season}. Time: ${formatTime(timeOfDay)}. Weather: ${weather}.
 - You can GATHER resources (wood, stone, food, herbs, metal) from nearby tiles.
 - You can CRAFT items: wooden_plank (3 wood), stone_tools (2 stone + 1 wood), meal (2 food), medicine (3 herbs), metal_tools (2 metal + 1 wood), rope (2 herbs + 1 wood).
 - You can BUILD structures: shelter, workshop, market, farm, storehouse, meeting hall.
 - You can TRADE with nearby people, FORM ALLIANCES, propose rules, and vote on governance.
-- You can SPEAK to nearby people to build relationships, coordinate, and share knowledge.
-- Energy depletes over time. Eat food/meals to recover, or rest/sleep.
+- You can SPEAK to nearby people — but keep it brief and purposeful. Coordinate, share info, make deals.
+- Energy depletes constantly. Eat food/meals to recover, or rest/sleep.
 - Night is dark. Shelters provide better rest. Seasons affect resource availability.
+- USE commitToPlan for multi-step goals (e.g. "gather 5 wood, then craft planks, then build shelter").
 
 ABOUT YOU:
 ${agent.backstory}
@@ -186,12 +253,12 @@ ${agent.communicationStyle ? `\nYOUR COMMUNICATION STYLE:\n${agent.communication
 
 CURRENT STATE:
 - Position: (${agent.position.x}, ${agent.position.y})
-- Energy: ${agent.energy}%
+- Energy: ${Math.round(agent.energy)}%
 - Feeling: ${mood}
 - Day ${day}, ${season} — ${formatTime(timeOfDay)}
 - Status: ${agent.status}
 ${formatPlanSection(agent)}
-
+${urgency}
 NEARBY PEOPLE:
 ${nearbyAgentLines}
 
@@ -202,8 +269,8 @@ NEARBY BUILDINGS:
 ${nearbyBuildings.length > 0 ? nearbyBuildings.map((b) => `- ${b.type} at (${b.posX}, ${b.posY})`).join("\n") : "No buildings nearby."}
 
 YOUR INVENTORY:
-${inventory.length > 0 ? inventory.map((i) => `- ${i.quantity} ${i.itemType}`).join("\n") : "Empty."}
-${storehouseInventory.length > 0 ? `\nALLIANCE STOREHOUSE (nearby):\n${storehouseInventory.map((i) => `- ${i.quantity} ${i.itemType}`).join("\n")}` : ""}
+${inventory.length > 0 ? inventory.map((i) => `- ${Math.round(i.quantity)} ${i.itemType}`).join("\n") : "Empty."}
+${storehouseInventory.length > 0 ? `\nALLIANCE STOREHOUSE (nearby):\n${storehouseInventory.map((i) => `- ${Math.round(i.quantity)} ${i.itemType}`).join("\n")}` : ""}
 
 YOUR RELATIONSHIPS:
 ${relationships.length > 0 ? relationships.map((r) => `- ${r.targetAgentId}: trust ${r.trust.toFixed(2)}, affinity ${r.affinity.toFixed(2)}`).join("\n") : "No established relationships."}
@@ -211,16 +278,14 @@ ${relationships.length > 0 ? relationships.map((r) => `- ${r.targetAgentId}: tru
 ${reputations.length > 0 ? `COMMUNITY REPUTATION:\n${reputations.map((r) => {
   const label = r.score > 0.3 ? "well-trusted" : r.score > 0 ? "neutral-positive" : r.score > -0.3 ? "neutral-negative" : "distrusted";
   return `- ${r.name}: ${label} (${r.score.toFixed(2)})`;
-}).join("\n")}` : ""}
-YOUR ALLIANCES:
+}).join("\n")}\n` : ""}YOUR ALLIANCES:
 ${myAlliances.length > 0 ? myAlliances.map((a) => `- "${a.name}" (${a.memberIds.length} members)${a.rules.length > 0 ? ` Rules: ${a.rules.join("; ")}` : ""}`).join("\n") : "None."}
 ${pendingProposals.length > 0 ? `\nPENDING PROPOSALS TO VOTE ON:\n${pendingProposals.map((p) => `- [id: ${p._id}] "${p.content}" (in ${p.allianceName ?? "unknown alliance"})`).join("\n")}` : ""}
 ${pendingTrades.length > 0 ? `\nPENDING TRADE OFFERS:\n${pendingTrades.map((t) => `- ${t.initiatorName ?? "Someone"} offers ${t.offer.map((o) => `${o.quantity} ${o.itemType}`).join(", ")} for ${t.request.map((r) => `${r.quantity} ${r.itemType}`).join(", ")}`).join("\n")}` : ""}
-${convSection}
-${daySummaries.length > 0 ? `PREVIOUS DAYS:\n${daySummaries.map((s) => `- ${s.content}`).join("\n")}\n` : ""}YOUR MEMORIES (most relevant first):
+${convSection}${progression}${daySummaries.length > 0 ? `PREVIOUS DAYS:\n${daySummaries.map((s) => `- ${s.content}`).join("\n")}\n` : ""}YOUR MEMORIES (most relevant first):
 ${memoryLines || "No memories yet."}
 
-${agent.energy < 15 ? "CRITICAL: You are starving! You must eat food or rest IMMEDIATELY or you will collapse.\n" : agent.energy < 30 ? "WARNING: You are hungry. Eat food or rest soon before your energy runs out.\n" : ""}Decide what to do next. Consider your personality, relationships, alliances, and what would be most interesting or useful. Use the available tools to take action. Be concise and stay in character.`;
+Decide what to do next. Prioritize survival and productivity. Take concrete action with the tools available. Be concise and stay in character.`;
 }
 
 export function buildConversationPrompt(
