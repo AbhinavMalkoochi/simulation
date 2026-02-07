@@ -5,6 +5,7 @@ import { findPath } from "../engine/pathfinding";
 import { addItem, removeItem, hasItems, getInventory } from "../world/inventory";
 import { findRecipe, BUILDING_COSTS } from "../world/recipes";
 import { updateRelationship } from "../social/relationships";
+import { ENERGY } from "../lib/constants";
 
 export const moveAgent = internalMutation({
   args: {
@@ -235,7 +236,7 @@ export const gatherResource = internalMutation({
 
     await ctx.db.patch(agentId, {
       status: "working",
-      energy: Math.max(0, agent.energy - 3),
+      energy: Math.max(0, agent.energy - ENERGY.GATHER_COST),
     });
 
     const world = await ctx.db.query("worldState").first();
@@ -248,7 +249,7 @@ export const gatherResource = internalMutation({
       tick,
     });
 
-    return `Gathered ${gatherAmount} ${resourceType}. Energy: ${Math.max(0, agent.energy - 3)}%.`;
+    return `Gathered ${gatherAmount} ${resourceType}. Energy: ${Math.max(0, agent.energy - ENERGY.GATHER_COST)}%.`;
   },
 });
 
@@ -281,7 +282,7 @@ export const craftItem = internalMutation({
     }
     await addItem(ctx, agentId, recipe.output.type, recipe.output.quantity);
 
-    await ctx.db.patch(agentId, { status: "working", energy: Math.max(0, agent.energy - 5) });
+    await ctx.db.patch(agentId, { status: "working", energy: Math.max(0, agent.energy - ENERGY.CRAFT_COST) });
 
     const world = await ctx.db.query("worldState").first();
     await ctx.db.insert("worldEvents", {
@@ -343,7 +344,7 @@ export const buildStructure = internalMutation({
       level: 1,
     });
 
-    await ctx.db.patch(agentId, { status: "working", energy: Math.max(0, agent.energy - 10) });
+    await ctx.db.patch(agentId, { status: "working", energy: Math.max(0, agent.energy - ENERGY.BUILD_COST) });
 
     const world = await ctx.db.query("worldState").first();
     await ctx.db.insert("worldEvents", {
@@ -414,11 +415,11 @@ export const eatFood = internalMutation({
     if (!agent) return "Agent not found.";
 
     let removed = await removeItem(ctx, agentId, "meal", 1);
-    let energyGain = 25;
+    let energyGain = ENERGY.EAT_MEAL;
 
     if (!removed) {
       removed = await removeItem(ctx, agentId, "food", 1);
-      energyGain = 10;
+      energyGain = ENERGY.EAT_FOOD;
     }
 
     if (!removed) return "You have no food or meals.";

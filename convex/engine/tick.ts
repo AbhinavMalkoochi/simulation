@@ -4,6 +4,7 @@ import { generateMap, isWalkable } from "../lib/mapgen";
 import { seededRandom, formatTime } from "../lib/utils";
 import { findPath } from "./pathfinding";
 import { nextWeather, regenerateResources, applyBuildingEffects } from "../world/systems";
+import { ENERGY } from "../lib/constants";
 
 export const run = internalMutation({
   handler: async (ctx) => {
@@ -31,13 +32,13 @@ export const run = internalMutation({
           path: remaining.length > 0 ? remaining : undefined,
           targetPosition: remaining.length > 0 ? agent.targetPosition : undefined,
           status: remaining.length > 0 ? "moving" : "idle",
-          energy: Math.max(0, agent.energy - 0.3),
+          energy: Math.max(0, agent.energy - ENERGY.MOVEMENT_COST),
         });
         continue;
       }
 
       if (agent.status === "sleeping") {
-        const newEnergy = Math.min(100, agent.energy + 5);
+        const newEnergy = Math.min(100, agent.energy + ENERGY.SLEEP_REGEN);
         if (newEnergy >= 90) {
           await ctx.db.patch(agent._id, { energy: newEnergy, status: "idle" });
         } else {
@@ -46,10 +47,26 @@ export const run = internalMutation({
         continue;
       }
 
-      // Auto-rest when critically low on energy
-      if (agent.energy < 5) {
+      // Passive energy drain for all non-sleeping agents (hunger)
+      const drainedEnergy = Math.max(0, agent.energy - ENERGY.PASSIVE_DRAIN);
+
+      // Starvation effects: mood deterioration when critically low
+      if (drainedEnergy < ENERGY.STARVATION_THRESHOLD && drainedEnergy > 0) {
         await ctx.db.patch(agent._id, {
-          energy: Math.min(100, agent.energy + 15),
+          energy: drainedEnergy,
+          emotion: {
+            valence: Math.max(-1, agent.emotion.valence - 0.05),
+            arousal: Math.min(1, agent.emotion.arousal + 0.03),
+          },
+        });
+      } else if (drainedEnergy !== agent.energy) {
+        await ctx.db.patch(agent._id, { energy: drainedEnergy });
+      }
+
+      // Auto-rest when critically low on energy
+      if (drainedEnergy < ENERGY.CRITICAL_THRESHOLD) {
+        await ctx.db.patch(agent._id, {
+          energy: Math.min(100, drainedEnergy + 15),
           status: "sleeping",
           path: undefined,
           targetPosition: undefined,
@@ -104,7 +121,7 @@ export const run = internalMutation({
             path: path.length > 2 ? path.slice(2) : undefined,
             targetPosition: path.length > 2 ? { x: targetX, y: targetY } : undefined,
             status: path.length > 2 ? "moving" : "idle",
-            energy: Math.max(0, agent.energy - 0.3),
+            energy: Math.max(0, agent.energy - ENERGY.MOVEMENT_COST),
           });
         }
       }

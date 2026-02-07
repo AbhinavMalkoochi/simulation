@@ -186,7 +186,7 @@ ${convSection}
 YOUR MEMORIES (most relevant first):
 ${memoryLines || "No memories yet."}
 
-Decide what to do next. Consider your personality, relationships, alliances, and what would be most interesting or useful. Use the available tools to take action. Be concise.`;
+${agent.energy < 15 ? "CRITICAL: You are starving! You must eat food or rest IMMEDIATELY or you will collapse.\n" : agent.energy < 30 ? "WARNING: You are hungry. Eat food or rest soon before your energy runs out.\n" : ""}Decide what to do next. Consider your personality, relationships, alliances, and what would be most interesting or useful. Use the available tools to take action. Be concise.`;
 }
 
 export function buildReflectionPrompt(
