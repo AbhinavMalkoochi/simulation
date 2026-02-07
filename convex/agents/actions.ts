@@ -113,6 +113,19 @@ export const speakTo = internalMutation({
       tick,
     });
 
+    // Schedule the target to respond (multi-turn conversation)
+    // Only if target is idle or talking — don't interrupt busy agents
+    if (target.status === "idle" || target.status === "talking") {
+      const convId = activeConv?._id ?? (await ctx.db.query("conversations").order("desc").first())?._id;
+      if (convId) {
+        const jitterMs = 500 + Math.floor(Math.random() * 1000);
+        await ctx.scheduler.runAfter(jitterMs, internal.agents.brain.respondToConversation, {
+          agentId: target._id,
+          conversationId: convId,
+        });
+      }
+    }
+
     return `You said "${message}" to ${target.name}.`;
   },
 });

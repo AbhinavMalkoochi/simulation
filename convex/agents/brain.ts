@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import { generateText, tool, stepCountIs } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
-import { buildSystemPrompt, buildReflectionPrompt } from "./prompts";
+import { buildSystemPrompt, buildReflectionPrompt, buildConversationPrompt } from "./prompts";
 import { scoreMemories } from "./memory";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
@@ -509,6 +509,105 @@ export const reflect = internalAction({
       }
     } catch (error) {
       console.error(`Agent ${agent.name} reflection failed:`, error);
+    }
+  },
+});
+
+const MAX_CONVERSATION_EXCHANGES = 3;
+
+export const respondToConversation = internalAction({
+  args: {
+    agentId: v.id("agents"),
+    conversationId: v.id("conversations"),
+  },
+  handler: async (ctx, { agentId, conversationId }) => {
+    const agent = await ctx.runQuery(internal.agents.queries.getById, { agentId });
+    if (!agent) return;
+
+    // Don't interrupt agents that are busy
+    if (agent.status !== "idle" && agent.status !== "talking") return;
+
+    const world = await ctx.runQuery(internal.world.getStateInternal, {});
+    const tick = world?.tick ?? 0;
+
+    // Get conversation to see what was said
+    const context = await ctx.runQuery(internal.agents.queries.getThinkingContext, { agentId });
+    if (!context) return;
+
+    const conv = context.pendingConversations.find((c) => {
+      // Match by checking messages — the conversation from context that's active
+      return c.participantIds.includes(String(agentId));
+    });
+    if (!conv || conv.messages.length === 0) return;
+
+    // Cap exchanges to prevent runaway LLM costs
+    const myMessages = conv.messages.filter((m) => m.speakerId === String(agentId));
+    if (myMessages.length >= MAX_CONVERSATION_EXCHANGES) return;
+
+    // Resolve speaker names
+    const allAgents = await ctx.runQuery(internal.agents.queries.getById, { agentId });
+    const speakerNames = new Map<string, string>();
+    speakerNames.set(String(agentId), agent.name);
+
+    // Find the partner
+    const partnerId = conv.participantIds.find((id) => id !== String(agentId));
+    if (partnerId) {
+      const partner = await ctx.runQuery(internal.agents.queries.getById, {
+        agentId: partnerId as typeof agentId,
+      });
+      if (partner) speakerNames.set(partnerId, partner.name);
+    }
+
+    const partnerName = partnerId ? (speakerNames.get(partnerId) ?? "Someone") : "Someone";
+
+    const messages = conv.messages.map((m) => ({
+      speakerName: speakerNames.get(m.speakerId) ?? "Unknown",
+      content: m.content,
+    }));
+
+    const prompt = buildConversationPrompt(agent, partnerName, messages);
+
+    // Only give conversation-relevant tools
+    const tools = {
+      speak: tool({
+        description: `Reply to ${partnerName} in the conversation.`,
+        inputSchema: z.object({
+          targetName: z.string().describe("Name of the person to reply to"),
+          message: z.string().describe("Your reply"),
+        }),
+        execute: async ({ targetName, message }: { targetName: string; message: string }) => {
+          return ctx.runMutation(internal.agents.actions.speakTo, {
+            speakerId: agentId,
+            targetName,
+            message,
+          });
+        },
+      }),
+      think: tool({
+        description: "Record a private thought about the conversation.",
+        inputSchema: z.object({
+          thought: z.string().describe("Your thought"),
+        }),
+        execute: async ({ thought }: { thought: string }) => {
+          return ctx.runMutation(internal.agents.actions.recordThought, {
+            agentId,
+            thought,
+            tick,
+          });
+        },
+      }),
+    };
+
+    try {
+      await generateText({
+        model: openai("gpt-4o-mini"),
+        system: prompt,
+        prompt: `${partnerName} just spoke to you. Respond naturally.`,
+        tools,
+        stopWhen: stepCountIs(1),
+      });
+    } catch (error) {
+      console.error(`Agent ${agent.name} conversation response failed:`, error);
     }
   },
 });

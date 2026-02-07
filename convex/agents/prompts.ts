@@ -189,6 +189,31 @@ ${memoryLines || "No memories yet."}
 ${agent.energy < 15 ? "CRITICAL: You are starving! You must eat food or rest IMMEDIATELY or you will collapse.\n" : agent.energy < 30 ? "WARNING: You are hungry. Eat food or rest soon before your energy runs out.\n" : ""}Decide what to do next. Consider your personality, relationships, alliances, and what would be most interesting or useful. Use the available tools to take action. Be concise.`;
 }
 
+export function buildConversationPrompt(
+  agent: { name: string; backstory: string; personality: Personality; emotion: { valence: number; arousal: number } },
+  partnerName: string,
+  messages: Array<{ speakerName: string; content: string }>,
+): string {
+  const personalityDesc = describePersonality(agent.personality);
+  const mood = describeMood(agent.emotion.valence, agent.emotion.arousal);
+  const messageLines = messages.map((m) => `${m.speakerName}: "${m.content}"`).join("\n");
+
+  return `You are ${agent.name}. ${agent.backstory}
+
+YOUR PERSONALITY: ${personalityDesc}
+YOUR MOOD: ${mood}
+
+${partnerName} is talking to you. Here is the conversation so far:
+${messageLines}
+
+Respond naturally in character. You may:
+- Use the speak tool to reply to ${partnerName}
+- Use the think tool to record a private thought
+- Use the setPlan tool if the conversation inspires a new goal
+
+Keep your response brief and natural (1-2 sentences). Be genuine to your personality.`;
+}
+
 export function buildReflectionPrompt(
   agentName: string,
   memories: Memory[],
