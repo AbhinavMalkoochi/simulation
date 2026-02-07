@@ -78,6 +78,9 @@ export const run = internalMutation({
       }
 
       if (agent.status === "idle" && !shouldThink) {
+        // Don't wander if agent has a locked plan — let the think cycle drive movement
+        if (agent.planSteps && agent.planStep !== undefined) continue;
+
         const shouldWander = rand() > 0.6;
         if (!shouldWander) continue;
 

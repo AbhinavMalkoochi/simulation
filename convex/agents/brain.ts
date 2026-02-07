@@ -263,6 +263,44 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
         });
       },
     }),
+
+    commitToPlan: tool({
+      description: "Commit to a multi-step plan. Each step will be executed in order across multiple think cycles. Use this for goals requiring multiple sequential actions (e.g. gather materials, craft, build).",
+      inputSchema: z.object({
+        plan: z.string().describe("Brief overall goal description"),
+        steps: z.array(z.string()).describe("Ordered list of concrete steps to execute"),
+      }),
+      execute: async ({ plan, steps }) => {
+        return ctx.runMutation(internal.agents.actions.commitToPlan, {
+          agentId,
+          plan,
+          steps,
+          tick,
+        });
+      },
+    }),
+
+    advancePlanStep: tool({
+      description: "Mark the current step of your plan as complete and move to the next step.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        return ctx.runMutation(internal.agents.actions.advancePlanStep, { agentId });
+      },
+    }),
+
+    abandonPlan: tool({
+      description: "Abandon your current multi-step plan. Use when the plan is no longer possible or relevant.",
+      inputSchema: z.object({
+        reason: z.string().describe("Why you are abandoning the plan"),
+      }),
+      execute: async ({ reason }) => {
+        return ctx.runMutation(internal.agents.actions.abandonPlan, {
+          agentId,
+          reason,
+          tick,
+        });
+      },
+    }),
   };
 }
 
@@ -290,7 +328,7 @@ export const think = internalAction({
     const scored = scoreMemories(memories, tick);
 
     const systemPrompt = buildSystemPrompt({
-      agent: { ...agent, _id: String(agentId) },
+      agent: { ...agent, _id: String(agentId), planSteps: agent.planSteps ?? undefined, planStep: agent.planStep ?? undefined },
       memories: scored.slice(0, 12),
       nearbyAgents: nearbyAgents.map((a) => ({
         name: a.name,
@@ -326,11 +364,17 @@ export const think = internalAction({
 
     const tools = buildTools(ctx, agentId, tick);
 
+    // Plan-aware prompting: if the agent has a locked plan, focus them on the current step
+    const hasPlan = agent.planSteps && agent.planStep !== undefined && agent.planStep < (agent.planSteps?.length ?? 0);
+    const userPrompt = hasPlan
+      ? `You are on step ${(agent.planStep ?? 0) + 1}/${agent.planSteps!.length} of your plan: "${agent.planSteps![agent.planStep ?? 0]}". Execute this step now using the available tools. If you completed it, call advancePlanStep. If it's impossible, call abandonPlan with a reason.`
+      : "What do you want to do right now? Think briefly, then act.";
+
     try {
       const result = await generateText({
         model: openai("gpt-4o-mini"),
         system: systemPrompt,
-        prompt: "What do you want to do right now? Think briefly, then act.",
+        prompt: userPrompt,
         tools,
         stopWhen: stepCountIs(3),
       });

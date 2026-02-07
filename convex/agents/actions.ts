@@ -439,3 +439,98 @@ export const checkInventory = internalMutation({
     return "Inventory: " + items.map((i) => `${i.quantity} ${i.itemType}`).join(", ") + ".";
   },
 });
+
+// --- Plan Lock (Tier 1) ---
+
+export const commitToPlan = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    plan: v.string(),
+    steps: v.array(v.string()),
+    tick: v.number(),
+  },
+  handler: async (ctx, { agentId, plan, steps, tick }) => {
+    if (steps.length === 0) return "Plan must have at least one step.";
+
+    await ctx.db.patch(agentId, {
+      currentPlan: `Step 1/${steps.length}: ${steps[0]}`,
+      planSteps: steps,
+      planStep: 0,
+      planStartTick: tick,
+    });
+
+    await ctx.db.insert("memories", {
+      agentId,
+      type: "plan",
+      content: `Committed to plan: ${plan} (${steps.length} steps)`,
+      importance: 6,
+      tick,
+    });
+
+    return `Plan committed with ${steps.length} steps. Starting step 1: ${steps[0]}`;
+  },
+});
+
+export const advancePlanStep = internalMutation({
+  args: { agentId: v.id("agents") },
+  handler: async (ctx, { agentId }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+    if (!agent.planSteps || agent.planStep === undefined) return "No active plan.";
+
+    const nextStep = agent.planStep + 1;
+    if (nextStep >= agent.planSteps.length) {
+      // Plan complete
+      await ctx.db.patch(agentId, {
+        currentPlan: undefined,
+        planSteps: undefined,
+        planStep: undefined,
+        planStartTick: undefined,
+      });
+
+      const world = await ctx.db.query("worldState").first();
+      await ctx.db.insert("memories", {
+        agentId,
+        type: "observation",
+        content: "I completed my entire plan successfully!",
+        importance: 5,
+        tick: world?.tick ?? 0,
+      });
+
+      return "Plan completed!";
+    }
+
+    await ctx.db.patch(agentId, {
+      planStep: nextStep,
+      currentPlan: `Step ${nextStep + 1}/${agent.planSteps.length}: ${agent.planSteps[nextStep]}`,
+    });
+
+    return `Advanced to step ${nextStep + 1}: ${agent.planSteps[nextStep]}`;
+  },
+});
+
+export const abandonPlan = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    reason: v.string(),
+    tick: v.number(),
+  },
+  handler: async (ctx, { agentId, reason, tick }) => {
+    await ctx.db.patch(agentId, {
+      currentPlan: undefined,
+      planSteps: undefined,
+      planStep: undefined,
+      planStartTick: undefined,
+    });
+
+    await ctx.db.insert("memories", {
+      agentId,
+      type: "observation",
+      content: `I abandoned my plan because: ${reason}`,
+      importance: 4,
+      tick,
+    });
+
+    return "Plan abandoned.";
+  },
+});

@@ -59,6 +59,22 @@ function describeMood(valence: number, arousal: number): string {
   return "calm and neutral";
 }
 
+function formatPlanSection(agent: {
+  currentPlan?: string;
+  planSteps?: string[];
+  planStep?: number;
+}): string {
+  if (agent.planSteps && agent.planStep !== undefined) {
+    const lines = agent.planSteps.map((step, i) => {
+      if (i < agent.planStep!) return `  ${i + 1}. [done] ${step}`;
+      if (i === agent.planStep!) return `  ${i + 1}. [CURRENT] ${step}`;
+      return `  ${i + 1}. [ ] ${step}`;
+    });
+    return `- ACTIVE PLAN (step ${agent.planStep + 1}/${agent.planSteps.length}):\n${lines.join("\n")}`;
+  }
+  return agent.currentPlan ? `- Current plan: ${agent.currentPlan}` : "- No current plan.";
+}
+
 type InventoryItem = { itemType: string; quantity: number };
 type NearbyBuilding = { type: string; posX: number; posY: number };
 type Relationship = { targetAgentId: string; trust: number; affinity: number };
@@ -76,6 +92,8 @@ interface BuildPromptArgs {
     emotion: { valence: number; arousal: number };
     status: string;
     currentPlan?: string;
+    planSteps?: string[];
+    planStep?: number;
     _id: string;
   };
   memories: Memory[];
@@ -139,7 +157,7 @@ CURRENT STATE:
 - Feeling: ${mood}
 - Time: ${formatTime(timeOfDay)} (tick ${tick})
 - Status: ${agent.status}
-${agent.currentPlan ? `- Current plan: ${agent.currentPlan}` : "- No current plan."}
+${formatPlanSection(agent)}
 
 NEARBY PEOPLE:
 ${nearbyAgentLines}
