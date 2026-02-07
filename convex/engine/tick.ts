@@ -199,6 +199,25 @@ export const run = internalMutation({
       await decayBuildings(ctx);
     }
 
+    // Day transition: generate day summaries when midnight passes
+    const TICKS_PER_DAY = 192;
+    if (newTimeOfDay < world.timeOfDay && newTick > TICKS_PER_DAY) {
+      const completedDay = Math.floor((newTick - 1) / TICKS_PER_DAY);
+      for (const agent of agents) {
+        await ctx.scheduler.runAfter(
+          Math.floor(Math.random() * 5000),
+          internal.agents.brain.generateDaySummary,
+          { agentId: agent._id, day: completedDay, tick: newTick },
+        );
+      }
+      await ctx.db.insert("worldEvents", {
+        type: "god_action",
+        description: `A new day dawns. Day ${completedDay + 1} begins.`,
+        involvedAgentIds: [],
+        tick: newTick,
+      });
+    }
+
     // Season transition every 768 ticks (~4 in-game days at 192 ticks/day)
     if (newTick % 768 === 0 && newTick > 0) {
       const SEASON_ORDER = ["spring", "summer", "autumn", "winter"] as const;

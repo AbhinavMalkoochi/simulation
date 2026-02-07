@@ -96,11 +96,21 @@ export const getThinkingContext = internalQuery({
       }
     }
 
+    // Fetch recent day summaries for cross-day context
+    const daySummaries = await ctx.db
+      .query("memories")
+      .withIndex("by_agent_type", (q) =>
+        q.eq("agentId", agentId).eq("type", "day_summary"),
+      )
+      .order("desc")
+      .take(3);
+
     return {
       agent, world, memories, nearbyAgents, pendingConversations, nearbyResources,
       inventory, nearbyBuildings, relationships, myAlliances, myPendingProposals, pendingTrades,
       storehouseInventory,
       reputations,
+      daySummaries,
     };
   },
 });
@@ -109,5 +119,29 @@ export const getById = internalQuery({
   args: { agentId: v.id("agents") },
   handler: async (ctx, { agentId }) => {
     return ctx.db.get(agentId);
+  },
+});
+
+/** Get the last N closed conversations between two specific agents */
+export const getPreviousConversations = internalQuery({
+  args: {
+    agentId: v.id("agents"),
+    partnerId: v.id("agents"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, { agentId, partnerId, limit }) => {
+    const conversations = await ctx.db
+      .query("conversations")
+      .order("desc")
+      .take(50);
+
+    return conversations
+      .filter(
+        (c) =>
+          c.endTick !== undefined &&
+          c.participantIds.includes(agentId) &&
+          c.participantIds.includes(partnerId),
+      )
+      .slice(0, limit ?? 2);
   },
 });

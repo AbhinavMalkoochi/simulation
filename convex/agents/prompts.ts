@@ -124,8 +124,11 @@ interface BuildPromptArgs {
   lastSightings: LastSighting[];
   storehouseInventory: InventoryItem[];
   reputations: Array<{ name: string; score: number }>;
+  daySummaries: Array<{ content: string; day?: number }>;
   timeOfDay: number;
   weather: string;
+  season: string;
+  day: number;
   tick: number;
 }
 
@@ -133,7 +136,7 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
   const {
     agent, memories, nearbyAgents, nearbyResources, pendingConversations,
     inventory, nearbyBuildings, relationships, myAlliances, pendingProposals, pendingTrades,
-    lastSightings, storehouseInventory, reputations, timeOfDay, weather, season, day, tick,
+    lastSightings, storehouseInventory, reputations, daySummaries, timeOfDay, weather, season, day, tick,
   } = args;
 
   const personalityDesc = describePersonality(agent.personality);
@@ -214,7 +217,7 @@ ${myAlliances.length > 0 ? myAlliances.map((a) => `- "${a.name}" (${a.memberIds.
 ${pendingProposals.length > 0 ? `\nPENDING PROPOSALS TO VOTE ON:\n${pendingProposals.map((p) => `- [id: ${p._id}] "${p.content}" (in ${p.allianceName ?? "unknown alliance"})`).join("\n")}` : ""}
 ${pendingTrades.length > 0 ? `\nPENDING TRADE OFFERS:\n${pendingTrades.map((t) => `- ${t.initiatorName ?? "Someone"} offers ${t.offer.map((o) => `${o.quantity} ${o.itemType}`).join(", ")} for ${t.request.map((r) => `${r.quantity} ${r.itemType}`).join(", ")}`).join("\n")}` : ""}
 ${convSection}
-YOUR MEMORIES (most relevant first):
+${daySummaries.length > 0 ? `PREVIOUS DAYS:\n${daySummaries.map((s) => `- ${s.content}`).join("\n")}\n` : ""}YOUR MEMORIES (most relevant first):
 ${memoryLines || "No memories yet."}
 
 ${agent.energy < 15 ? "CRITICAL: You are starving! You must eat food or rest IMMEDIATELY or you will collapse.\n" : agent.energy < 30 ? "WARNING: You are hungry. Eat food or rest soon before your energy runs out.\n" : ""}Decide what to do next. Consider your personality, relationships, alliances, and what would be most interesting or useful. Use the available tools to take action. Be concise and stay in character.`;

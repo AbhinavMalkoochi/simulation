@@ -81,10 +81,12 @@ export default defineSchema({
       v.literal("reflection"),
       v.literal("plan"),
       v.literal("conversation"),
+      v.literal("day_summary"),
     ),
     content: v.string(),
     importance: v.number(),
     tick: v.number(),
+    day: v.optional(v.number()),
   })
     .index("by_agent", ["agentId"])
     .index("by_agent_type", ["agentId", "type"]),

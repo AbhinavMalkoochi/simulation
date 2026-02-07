@@ -395,7 +395,7 @@ export const think = internalAction({
     const {
       agent, world, memories, nearbyAgents, pendingConversations, nearbyResources,
       inventory, nearbyBuildings, relationships, myAlliances, myPendingProposals, pendingTrades,
-      storehouseInventory, reputations,
+      storehouseInventory, reputations, daySummaries,
     } = context;
     const tick = world.tick;
 
@@ -487,6 +487,7 @@ export const think = internalAction({
       lastSightings,
       storehouseInventory: storehouseInventory ?? [],
       reputations: reputationEntries,
+      daySummaries: (daySummaries ?? []).map((s) => ({ content: s.content, day: s.day ?? undefined })),
       timeOfDay: world.timeOfDay,
       weather: world.weather,
       season: world.season,
@@ -652,7 +653,26 @@ export const respondToConversation = internalAction({
       content: m.content,
     }));
 
-    const prompt = buildConversationPrompt(agent, partnerName, messages);
+    // Fetch previous conversation history with this partner for continuity
+    let previousConversationSummary: string | undefined;
+    if (partnerId) {
+      const prevConvs = await ctx.runQuery(
+        internal.agents.queries.getPreviousConversations,
+        { agentId, partnerId: partnerId as typeof agentId, limit: 2 },
+      );
+      if (prevConvs.length > 0) {
+        const summaryLines = prevConvs.map((c) => {
+          const lastMessages = c.messages.slice(-3).map((m) => {
+            const name = speakerNames.get(String(m.speakerId)) ?? "Someone";
+            return `${name}: "${m.content}"`;
+          });
+          return lastMessages.join("\n");
+        });
+        previousConversationSummary = summaryLines.join("\n---\n");
+      }
+    }
+
+    const prompt = buildConversationPrompt(agent, partnerName, messages, previousConversationSummary);
 
     // Only give conversation-relevant tools
     const tools = {
@@ -695,6 +715,56 @@ export const respondToConversation = internalAction({
       });
     } catch (error) {
       console.error(`Agent ${agent.name} conversation response failed:`, error);
+    }
+  },
+});
+
+export const generateDaySummary = internalAction({
+  args: { agentId: v.id("agents"), day: v.number(), tick: v.number() },
+  handler: async (ctx, { agentId, day, tick }) => {
+    const agent = await ctx.runQuery(internal.agents.queries.getById, { agentId });
+    if (!agent) return;
+
+    const context = await ctx.runQuery(internal.agents.queries.getThinkingContext, { agentId });
+    if (!context) return;
+
+    // Get memories from this day only (last 192 ticks)
+    const TICKS_PER_DAY = 192;
+    const dayStart = (day - 1) * TICKS_PER_DAY;
+    const todayMemories = context.memories
+      .filter((m) => m.tick >= dayStart && m.type !== "day_summary")
+      .slice(0, 20);
+
+    if (todayMemories.length < 3) return;
+
+    const memoryLines = todayMemories
+      .map((m) => `- [${m.type}] ${m.content}`)
+      .join("\n");
+
+    try {
+      const result = await generateText({
+        model: openai("gpt-4o-mini"),
+        prompt: `You are ${agent.name}. It is the end of Day ${day}. Write a brief 2-3 sentence summary of your day. What happened? What did you learn? What do you want to do tomorrow?
+
+YOUR DAY'S EXPERIENCES:
+${memoryLines}
+
+Write in first person as ${agent.name}. Be specific about events, people, and feelings.`,
+        stopWhen: stepCountIs(1),
+      });
+
+      if (result.text) {
+        await ctx.runMutation(internal.agents.memory.store, {
+          agentId,
+          type: "day_summary" as const,
+          content: `[Day ${day} Summary] ${result.text.slice(0, 500)}`,
+          importance: 9,
+          tick,
+          day,
+        });
+      }
+    } catch (error) {
+      console.error(`Agent ${agent.name} day summary failed:`, error);
     }
   },
 });
