@@ -8,6 +8,7 @@ import { EconomyDashboard } from "./EconomyDashboard";
 import { Newspaper } from "./Newspaper";
 import { StoryNarrator } from "./StoryNarrator";
 import { GodMode } from "./GodMode";
+import { WorldOverview } from "./WorldOverview";
 import { STATUS_BADGE, agentColorHex } from "../../types";
 import type { AgentDoc, WorldEvent } from "../../types";
 
@@ -15,10 +16,14 @@ interface SidebarProps {
   selectedAgent: AgentDoc | null;
   agents: AgentDoc[];
   events: WorldEvent[];
+  worldState: { tick: number; timeOfDay: number; weather: string; season: string; paused: boolean } | null;
+  buildingCount: number;
+  allianceCount: number;
   onAgentSelect: (agentId: string | null) => void;
 }
 
 const TABS = [
+  { id: "world", label: "World" },
   { id: "agents", label: "Agents" },
   { id: "social", label: "Social" },
   { id: "economy", label: "Econ" },
@@ -29,8 +34,8 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
-export function Sidebar({ selectedAgent, agents, events, onAgentSelect }: SidebarProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("agents");
+export function Sidebar({ selectedAgent, agents, events, worldState, buildingCount, allianceCount, onAgentSelect }: SidebarProps) {
+  const [activeTab, setActiveTab] = useState<TabId>("world");
   const relationships = useQuery(api.world.getRelationships);
   const alliances = useQuery(api.world.getAlliances);
   const economyStats = useQuery(api.analytics.stats.getEconomyStats);
@@ -67,6 +72,19 @@ export function Sidebar({ selectedAgent, agents, events, onAgentSelect }: Sideba
       </div>
 
       <div className="flex-1 overflow-y-auto p-3">
+        {activeTab === "world" && worldState && (
+          <WorldOverview
+            tick={worldState.tick}
+            timeOfDay={worldState.timeOfDay}
+            weather={worldState.weather}
+            season={worldState.season}
+            paused={worldState.paused}
+            agents={agents}
+            buildingCount={buildingCount}
+            allianceCount={allianceCount}
+          />
+        )}
+
         {activeTab === "agents" && (
           <div className="flex flex-col gap-0.5">
             {agents.map((agent) => (

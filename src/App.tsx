@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { WorldCanvas } from "./components/world/WorldCanvas";
+import { ActivityFeed } from "./components/world/ActivityFeed";
 import { Sidebar } from "./components/panels/Sidebar";
 import { Toolbar } from "./components/ui/Toolbar";
 
@@ -68,24 +69,36 @@ export function App() {
         onToggleDirector={() => setDirectorMode((d) => !d)}
       />
       <div className="flex-1 flex overflow-hidden">
-        <WorldCanvas
-          agents={agents ?? []}
-          resources={resources ?? []}
-          buildings={buildings ?? []}
-          events={events ?? []}
-          alliances={(alliances ?? []).map((a) => ({ _id: a._id, name: a.name, memberIds: a.memberIds.map(String) }))}
-          mapSeed={worldState.mapSeed}
-          mapWidth={worldState.mapWidth}
-          mapHeight={worldState.mapHeight}
-          tileSize={worldState.tileSize}
-          timeOfDay={worldState.timeOfDay}
-          weather={worldState.weather}
-          onAgentSelect={setSelectedAgentId}
-        />
+        <div className="flex-1 relative">
+          <WorldCanvas
+            agents={agents ?? []}
+            resources={resources ?? []}
+            buildings={buildings ?? []}
+            events={events ?? []}
+            alliances={(alliances ?? []).map((a) => ({ _id: a._id, name: a.name, memberIds: a.memberIds.map(String) }))}
+            mapSeed={worldState.mapSeed}
+            mapWidth={worldState.mapWidth}
+            mapHeight={worldState.mapHeight}
+            tileSize={worldState.tileSize}
+            timeOfDay={worldState.timeOfDay}
+            weather={worldState.weather}
+            onAgentSelect={setSelectedAgentId}
+          />
+          <ActivityFeed events={events ?? []} />
+        </div>
         <Sidebar
           selectedAgent={selectedAgent}
           agents={agents ?? []}
           events={events ?? []}
+          worldState={worldState ? {
+            tick: worldState.tick,
+            timeOfDay: worldState.timeOfDay,
+            weather: worldState.weather,
+            season: worldState.season,
+            paused: worldState.paused,
+          } : null}
+          buildingCount={buildings?.length ?? 0}
+          allianceCount={alliances?.length ?? 0}
           onAgentSelect={setSelectedAgentId}
         />
       </div>
