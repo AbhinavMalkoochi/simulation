@@ -1,34 +1,9 @@
-import type { Id } from "../convex/_generated/dataModel";
+import type { Doc } from "../convex/_generated/dataModel";
+import { AGENT_COLORS } from "../convex/lib/constants";
 
-export interface AgentDoc {
-  _id: Id<"agents">;
-  name: string;
-  backstory: string;
-  personality: {
-    openness: number;
-    conscientiousness: number;
-    extraversion: number;
-    agreeableness: number;
-    neuroticism: number;
-  };
-  position: { x: number; y: number };
-  targetPosition?: { x: number; y: number };
-  path?: { x: number; y: number }[];
-  energy: number;
-  emotion: { valence: number; arousal: number };
-  status: string;
-  currentPlan?: string;
-  currentAction?: string;
-  skills: Record<string, number>;
-  spriteSeed: number;
-}
+export type AgentDoc = Doc<"agents">;
 
-export interface WorldEvent {
-  _id: string;
-  type: string;
-  description: string;
-  tick: number;
-}
+export type WorldEvent = Pick<Doc<"worldEvents">, "_id" | "type" | "description" | "tick">;
 
 export interface AgentSpriteData {
   _id: string;
@@ -64,6 +39,6 @@ export const STATUS_BADGE: Record<string, string> = {
   exploring: "bg-pink-600",
 };
 
-export function agentColorHex(spriteSeed: number, colors: number[]): string {
-  return `#${colors[spriteSeed % colors.length].toString(16).padStart(6, "0")}`;
+export function agentColorHex(spriteSeed: number): string {
+  return `#${AGENT_COLORS[spriteSeed % AGENT_COLORS.length].toString(16).padStart(6, "0")}`;
 }

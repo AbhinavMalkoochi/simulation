@@ -77,7 +77,7 @@ export function SocialGraph({ agents, relationships, alliances }: SocialGraphPro
 
     const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     const ctx = canvas.getContext("2d")!;
-    ctx.scale(2, 2);
+    ctx.setTransform(2, 0, 0, 2, 0, 0);
 
     function simulate() {
       const damping = 0.85;

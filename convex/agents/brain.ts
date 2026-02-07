@@ -104,7 +104,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
     }),
 
     buildStructure: tool({
-      description: "Build a structure at your current location. Types: shelter (5 wood + 3 stone), workshop (8 wood + 5 stone + 2 metal), market (10 wood + 8 stone), farm (4 wood + 2 stone), storehouse (6 wood + 4 stone).",
+      description: "Build a structure at your current location. Types: shelter (5 wood + 3 stone), workshop (8 wood + 5 stone + 2 metal), market (10 wood + 8 stone), farm (4 wood + 2 stone), storehouse (6 wood + 4 stone), meetingHall (12 wood + 10 stone + 3 metal).",
       inputSchema: z.object({
         buildingType: z.string().describe("Type of building to construct"),
       }),
@@ -164,10 +164,13 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
         const offset = offsets[direction] ?? offsets["north"];
         const agent = await ctx.runQuery(internal.agents.queries.getById, { agentId });
         if (!agent) return "Agent not found.";
+        const world = await ctx.runQuery(internal.world.getStateInternal, {});
+        const maxX = (world?.mapWidth ?? 50) - 1;
+        const maxY = (world?.mapHeight ?? 50) - 1;
         return ctx.runMutation(internal.agents.actions.moveAgent, {
           agentId,
-          targetX: Math.max(0, Math.min(49, agent.position.x + offset.dx)),
-          targetY: Math.max(0, Math.min(49, agent.position.y + offset.dy)),
+          targetX: Math.max(0, Math.min(maxX, agent.position.x + offset.dx)),
+          targetY: Math.max(0, Math.min(maxY, agent.position.y + offset.dy)),
         });
       },
     }),
@@ -242,6 +245,21 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
         return ctx.runMutation(internal.social.trading.respond, {
           responderId: agentId,
           accept,
+        });
+      },
+    }),
+
+    voteOnProposal: tool({
+      description: "Vote yes or no on a pending governance proposal in your alliance.",
+      inputSchema: z.object({
+        proposalId: z.string().describe("ID of the proposal to vote on"),
+        vote: z.boolean().describe("true to vote yes, false to vote no"),
+      }),
+      execute: async ({ proposalId, vote }) => {
+        return ctx.runMutation(internal.social.alliances.vote, {
+          voterId: agentId,
+          proposalId: proposalId as Id<"proposals">,
+          voteValue: vote,
         });
       },
     }),

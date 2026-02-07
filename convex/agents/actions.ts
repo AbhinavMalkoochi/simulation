@@ -206,7 +206,13 @@ export const updateEmotion = internalMutation({
 export const gatherResource = internalMutation({
   args: {
     agentId: v.id("agents"),
-    resourceType: v.string(),
+    resourceType: v.union(
+      v.literal("wood"),
+      v.literal("stone"),
+      v.literal("food"),
+      v.literal("metal"),
+      v.literal("herbs"),
+    ),
   },
   handler: async (ctx, { agentId, resourceType }) => {
     const agent = await ctx.db.get(agentId);
@@ -292,18 +298,18 @@ export const craftItem = internalMutation({
 export const buildStructure = internalMutation({
   args: {
     agentId: v.id("agents"),
-    buildingType: v.string(),
+    buildingType: v.union(
+      v.literal("shelter"),
+      v.literal("workshop"),
+      v.literal("market"),
+      v.literal("meetingHall"),
+      v.literal("farm"),
+      v.literal("storehouse"),
+    ),
   },
   handler: async (ctx, { agentId, buildingType }) => {
     const agent = await ctx.db.get(agentId);
     if (!agent) return "Agent not found.";
-
-    const VALID_BUILDINGS = ["shelter", "workshop", "market", "meetingHall", "farm", "storehouse"] as const;
-    type BuildingType = (typeof VALID_BUILDINGS)[number];
-
-    if (!VALID_BUILDINGS.includes(buildingType as BuildingType)) {
-      return `Unknown building type: ${buildingType}.`;
-    }
 
     const cost = BUILDING_COSTS[buildingType];
     if (!cost) return `Unknown building type: ${buildingType}.`;
@@ -329,7 +335,7 @@ export const buildStructure = internalMutation({
     }
 
     await ctx.db.insert("buildings", {
-      type: buildingType as BuildingType,
+      type: buildingType,
       posX: agent.position.x,
       posY: agent.position.y,
       ownerId: agentId,

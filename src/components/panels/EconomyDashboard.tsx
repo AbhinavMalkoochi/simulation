@@ -1,10 +1,7 @@
-interface EconomyStats {
-  resourceTotals: Record<string, number>;
-  agentWealth: Array<{ name: string; total: number }>;
-  completedTrades: number;
-  pendingTrades: number;
-  totalTrades: number;
-}
+import type { FunctionReturnType } from "convex/server";
+import type { api } from "../../../convex/_generated/api";
+
+type EconomyStats = NonNullable<FunctionReturnType<typeof api.analytics.stats.getEconomyStats>>;
 
 const RESOURCE_COLORS: Record<string, string> = {
   wood: "bg-amber-700",

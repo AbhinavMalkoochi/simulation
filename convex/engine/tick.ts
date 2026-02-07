@@ -1,16 +1,9 @@
 import { internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { generateMap, isWalkable } from "../lib/mapgen";
+import { seededRandom, formatTime } from "../lib/utils";
 import { findPath } from "./pathfinding";
 import { nextWeather, regenerateResources, applyBuildingEffects } from "../world/systems";
-
-function seededRandom(seed: number): () => number {
-  let s = seed;
-  return () => {
-    s = (s * 1664525 + 1013904223) & 0x7fffffff;
-    return s / 0x7fffffff;
-  };
-}
 
 export const run = internalMutation({
   handler: async (ctx) => {
@@ -53,6 +46,17 @@ export const run = internalMutation({
         continue;
       }
 
+      // Auto-rest when critically low on energy
+      if (agent.energy < 5) {
+        await ctx.db.patch(agent._id, {
+          energy: Math.min(100, agent.energy + 15),
+          status: "sleeping",
+          path: undefined,
+          targetPosition: undefined,
+        });
+        continue;
+      }
+
       const shouldThink = newTick % 5 === (Math.abs(agent.spriteSeed) % 5);
       if (shouldThink && agent.status === "idle") {
         const jitterMs = Math.floor(rand() * 3000);
@@ -70,13 +74,6 @@ export const run = internalMutation({
 
       if (agent.status === "talking") {
         await ctx.db.patch(agent._id, { status: "idle" });
-        // Close any active conversations this agent is in
-        const activeConvs = await ctx.db.query("conversations").order("desc").take(10);
-        for (const conv of activeConvs) {
-          if (!conv.endTick && conv.participantIds.includes(agent._id)) {
-            await ctx.db.patch(conv._id, { endTick: newTick });
-          }
-        }
         continue;
       }
 
@@ -106,6 +103,20 @@ export const run = internalMutation({
             status: path.length > 2 ? "moving" : "idle",
             energy: Math.max(0, agent.energy - 0.3),
           });
+        }
+      }
+    }
+
+    // Close stale conversations (no new messages for 10+ ticks)
+    if (newTick % 5 === 0) {
+      const openConvs = await ctx.db.query("conversations").order("desc").take(20);
+      for (const conv of openConvs) {
+        if (conv.endTick) continue;
+        const lastMsgTick = conv.messages.length > 0
+          ? conv.messages[conv.messages.length - 1].tick
+          : conv.startTick;
+        if (newTick - lastMsgTick >= 10) {
+          await ctx.db.patch(conv._id, { endTick: newTick });
         }
       }
     }
@@ -141,8 +152,3 @@ export const run = internalMutation({
   },
 });
 
-function formatTime(t: number): string {
-  const h = Math.floor(t);
-  const m = Math.floor((t % 1) * 60);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}

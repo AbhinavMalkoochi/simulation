@@ -4,11 +4,10 @@ import { api } from "../convex/_generated/api";
 import { WorldCanvas } from "./components/world/WorldCanvas";
 import { Sidebar } from "./components/panels/Sidebar";
 import { Toolbar } from "./components/ui/Toolbar";
-import type { AgentDoc } from "./types";
 
 export function App() {
   const worldState = useQuery(api.world.getState);
-  const agents = useQuery(api.agents.list) as AgentDoc[] | undefined;
+  const agents = useQuery(api.agents.list);
   const events = useQuery(api.events.recent);
   const resources = useQuery(api.world.getResources);
   const buildings = useQuery(api.world.getBuildings);

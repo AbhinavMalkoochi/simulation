@@ -1,6 +1,7 @@
 import { mutation } from "./_generated/server";
 import { MAP_WIDTH, MAP_HEIGHT, MAP_SEED, TILE_SIZE } from "./lib/constants";
 import { generateMap, isWalkable } from "./lib/mapgen";
+import { seededRandom } from "./lib/utils";
 
 const SEED_AGENTS = [
   {
@@ -74,14 +75,6 @@ const SEED_AGENTS = [
     skills: { gathering: 1, crafting: 1, building: 2, trading: 2, leadership: 4 },
   },
 ];
-
-function seededRandom(seed: number) {
-  let s = seed;
-  return () => {
-    s = (s * 1664525 + 1013904223) & 0x7fffffff;
-    return s / 0x7fffffff;
-  };
-}
 
 export const seedWorld = mutation({
   handler: async (ctx) => {

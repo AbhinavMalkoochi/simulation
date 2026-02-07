@@ -29,23 +29,29 @@ export function WorldCanvas({
 }: WorldCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<GameWorld | null>(null);
+  const onAgentSelectRef = useRef(onAgentSelect);
+  onAgentSelectRef.current = onAgentSelect;
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
+    let cancelled = false;
     const world = new GameWorld();
     worldRef.current = world;
+
     world.init(el).then(() => {
+      if (cancelled) return;
       world.setMap(mapSeed, mapWidth, mapHeight, tileSize);
-      world.setOnAgentSelect(onAgentSelect);
+      world.setOnAgentSelect((id: string) => onAgentSelectRef.current(id));
     });
 
     return () => {
+      cancelled = true;
       world.destroy();
       worldRef.current = null;
     };
-  }, [mapSeed, mapWidth, mapHeight, tileSize, onAgentSelect]);
+  }, [mapSeed, mapWidth, mapHeight, tileSize]);
 
   useEffect(() => {
     const w = worldRef.current;

@@ -48,6 +48,8 @@ function describePersonality(p: Personality): string {
     .join(" ");
 }
 
+import { formatTime } from "../lib/utils";
+
 function describeMood(valence: number, arousal: number): string {
   if (valence > 0.3 && arousal > 0.5) return "excited and happy";
   if (valence > 0.3 && arousal <= 0.5) return "content and peaceful";
@@ -55,12 +57,6 @@ function describeMood(valence: number, arousal: number): string {
   if (valence < -0.3 && arousal <= 0.5) return "sad and withdrawn";
   if (arousal > 0.7) return "alert and energized";
   return "calm and neutral";
-}
-
-function formatTime(t: number): string {
-  const h = Math.floor(t);
-  const m = Math.floor((t % 1) * 60);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
 type InventoryItem = { itemType: string; quantity: number };
@@ -164,7 +160,7 @@ ${relationships.length > 0 ? relationships.map((r) => `- Agent ${r.targetAgentId
 
 YOUR ALLIANCES:
 ${myAlliances.length > 0 ? myAlliances.map((a) => `- "${a.name}" (${a.memberIds.length} members)${a.rules.length > 0 ? ` Rules: ${a.rules.join("; ")}` : ""}`).join("\n") : "None."}
-${pendingProposals.length > 0 ? `\nPENDING PROPOSALS TO VOTE ON:\n${pendingProposals.map((p) => `- "${p.content}" (in ${p.allianceName ?? "unknown alliance"})`).join("\n")}` : ""}
+${pendingProposals.length > 0 ? `\nPENDING PROPOSALS TO VOTE ON:\n${pendingProposals.map((p) => `- [id: ${p._id}] "${p.content}" (in ${p.allianceName ?? "unknown alliance"})`).join("\n")}` : ""}
 ${pendingTrades.length > 0 ? `\nPENDING TRADE OFFERS:\n${pendingTrades.map((t) => `- ${t.initiatorName ?? "Someone"} offers ${t.offer.map((o) => `${o.quantity} ${o.itemType}`).join(", ")} for ${t.request.map((r) => `${r.quantity} ${r.itemType}`).join(", ")}`).join("\n")}` : ""}
 ${convSection}
 YOUR MEMORIES (most relevant first):

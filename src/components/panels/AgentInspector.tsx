@@ -1,6 +1,5 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { AGENT_COLORS } from "../../../convex/lib/constants";
 import { STATUS_BADGE, agentColorHex } from "../../types";
 import { InterviewChat } from "./InterviewChat";
 import type { AgentDoc } from "../../types";
@@ -39,7 +38,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentDoc; onClose: (
   const inventory = useQuery(api.world.getInventory, { agentId: agent._id });
   const conversations = useQuery(api.agents.getConversations, { agentId: agent._id });
 
-  const color = agentColorHex(agent.spriteSeed, AGENT_COLORS);
+  const color = agentColorHex(agent.spriteSeed);
 
   return (
     <div className="flex flex-col gap-3 overflow-y-auto p-3">
@@ -143,7 +142,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentDoc; onClose: (
 
       <Section title="Interview">
         <div className="h-48">
-          <InterviewChat agentId={agent._id} agentName={agent.name} />
+          <InterviewChat key={agent._id} agentId={agent._id} agentName={agent.name} />
         </div>
       </Section>
 

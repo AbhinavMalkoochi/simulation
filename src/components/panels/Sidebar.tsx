@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { AGENT_COLORS } from "../../../convex/lib/constants";
 import { EventFeed } from "./EventFeed";
 import { AgentInspector } from "./AgentInspector";
 import { SocialGraph } from "./SocialGraph";
@@ -76,7 +75,7 @@ export function Sidebar({ selectedAgent, agents, events, onAgentSelect }: Sideba
               >
                 <div
                   className="w-3 h-3 rounded-full shrink-0"
-                  style={{ backgroundColor: agentColorHex(agent.spriteSeed, AGENT_COLORS) }}
+                  style={{ backgroundColor: agentColorHex(agent.spriteSeed) }}
                 />
                 <span className="text-xs text-slate-300 truncate flex-1">{agent.name}</span>
                 <span className="text-[9px] text-slate-500 font-mono">{Math.round(agent.energy)}%</span>

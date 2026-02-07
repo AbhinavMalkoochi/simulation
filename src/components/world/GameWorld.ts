@@ -72,6 +72,9 @@ export class GameWorld {
   private mapHeight = 0;
 
   private onAgentSelect?: (agentId: string) => void;
+  private _initialized = false;
+  private _destroyed = false;
+  private _abortController = new AbortController();
 
   async init(container: HTMLDivElement): Promise<void> {
     this.app = new Application();
@@ -82,6 +85,13 @@ export class GameWorld {
       resolution: window.devicePixelRatio,
       autoDensity: true,
     });
+
+    // If destroy() was called while init was awaiting, tear down immediately
+    if (this._destroyed) {
+      this.app.destroy(true, { children: true });
+      return;
+    }
+
     container.appendChild(this.app.canvas);
 
     this.worldContainer = new Container();
@@ -108,6 +118,7 @@ export class GameWorld {
     this.setupControls(this.app.canvas as HTMLCanvasElement);
 
     this.app.ticker.add(() => this.animateAgents());
+    this._initialized = true;
   }
 
   setMap(seed: number, width: number, height: number, tileSize: number): void {
@@ -203,7 +214,11 @@ export class GameWorld {
   }
 
   destroy(): void {
-    this.app?.destroy(true, { children: true });
+    this._destroyed = true;
+    this._abortController.abort();
+    if (this._initialized) {
+      this.app.destroy(true, { children: true });
+    }
   }
 
   private renderTiles(mapTiles: number[]): void {
@@ -286,28 +301,30 @@ export class GameWorld {
   }
 
   private setupControls(canvas: HTMLCanvasElement): void {
+    const signal = this._abortController.signal;
+
     canvas.addEventListener("pointerdown", (e) => {
       this.isDragging = true;
       this.dragStart = { x: e.clientX, y: e.clientY };
       this.cameraStart = { ...this.camera };
-    });
+    }, { signal });
 
     canvas.addEventListener("pointermove", (e) => {
       if (!this.isDragging) return;
       this.camera.x = this.cameraStart.x - (e.clientX - this.dragStart.x) / this.camera.zoom;
       this.camera.y = this.cameraStart.y - (e.clientY - this.dragStart.y) / this.camera.zoom;
       this.updateCamera();
-    });
+    }, { signal });
 
-    canvas.addEventListener("pointerup", () => { this.isDragging = false; });
-    canvas.addEventListener("pointerleave", () => { this.isDragging = false; });
+    canvas.addEventListener("pointerup", () => { this.isDragging = false; }, { signal });
+    canvas.addEventListener("pointerleave", () => { this.isDragging = false; }, { signal });
 
     canvas.addEventListener("wheel", (e) => {
       e.preventDefault();
       const factor = e.deltaY > 0 ? 0.9 : 1.1;
       this.camera.zoom = Math.max(0.3, Math.min(4, this.camera.zoom * factor));
       this.updateCamera();
-    }, { passive: false });
+    }, { passive: false, signal });
   }
 
   private updateCamera(): void {

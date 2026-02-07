@@ -1,3 +1,5 @@
+import { formatTime } from "../../../convex/lib/utils";
+
 interface ToolbarProps {
   tick: number;
   timeOfDay: number;
@@ -15,12 +17,6 @@ const WEATHER_ICONS: Record<string, string> = {
   storm: "⛈",
   fog: "🌫",
 };
-
-function formatTime(t: number): string {
-  const hours = Math.floor(t);
-  const minutes = Math.floor((t % 1) * 60);
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-}
 
 export function Toolbar({
   tick,
