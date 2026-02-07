@@ -51,6 +51,13 @@ const BUILDING_COLORS: Record<string, number> = {
   storehouse: 0x78716c,
 };
 
+interface SpeechBubble {
+  container: Container;
+  createdAt: number;
+  duration: number;
+  agentId: string;
+}
+
 export class GameWorld {
   private app: Application | null = null;
   private worldContainer: Container | null = null;
@@ -59,8 +66,13 @@ export class GameWorld {
   private resourceLayer: Graphics | null = null;
   private buildingLayer: Graphics | null = null;
   private agentContainer: Container | null = null;
+  private speechBubbleLayer: Container | null = null;
+  private animationLayer: Container | null = null;
+  private territoryLayer: Graphics | null = null;
   private dayNightOverlay: Graphics | null = null;
   private agentSprites = new Map<string, AgentSprite>();
+  private speechBubbles = new Map<string, SpeechBubble>();
+  private transferAnimations: Array<{ gfx: Graphics; fromX: number; fromY: number; toX: number; toY: number; progress: number; speed: number }> = [];
 
   private camera = { x: 0, y: 0, zoom: 1 };
   private isDragging = false;
@@ -109,8 +121,17 @@ export class GameWorld {
     this.buildingLayer = new Graphics();
     this.worldContainer.addChild(this.buildingLayer);
 
+    this.territoryLayer = new Graphics();
+    this.worldContainer.addChild(this.territoryLayer);
+
     this.agentContainer = new Container();
     this.worldContainer.addChild(this.agentContainer);
+
+    this.speechBubbleLayer = new Container();
+    this.worldContainer.addChild(this.speechBubbleLayer);
+
+    this.animationLayer = new Container();
+    this.worldContainer.addChild(this.animationLayer);
 
     this.dayNightOverlay = new Graphics();
     this.worldContainer.addChild(this.dayNightOverlay);
@@ -291,6 +312,154 @@ export class GameWorld {
     this.agentContainer!.addChild(container);
 
     return { container, body, statusDot, label, targetX: px, targetY: py };
+  }
+
+  showSpeechBubble(agentId: string, message: string, durationMs = 3500): void {
+    if (!this._initialized || !this.speechBubbleLayer) return;
+
+    // Remove existing bubble for this agent
+    const existing = this.speechBubbles.get(agentId);
+    if (existing) {
+      this.speechBubbleLayer.removeChild(existing.container);
+      existing.container.destroy({ children: true });
+    }
+
+    const sprite = this.agentSprites.get(agentId);
+    if (!sprite) return;
+
+    const bubbleContainer = new Container();
+    const truncated = message.length > 60 ? message.slice(0, 57) + "..." : message;
+
+    const bubbleText = new Text({
+      text: truncated,
+      style: new TextStyle({
+        fontSize: 8,
+        fill: 0x1e293b,
+        fontFamily: "Inter, sans-serif",
+        wordWrap: true,
+        wordWrapWidth: 120,
+      }),
+    });
+    bubbleText.x = 6;
+    bubbleText.y = 4;
+
+    const bgWidth = Math.min(132, bubbleText.width + 12);
+    const bgHeight = bubbleText.height + 8;
+
+    const bg = new Graphics();
+    bg.roundRect(0, 0, bgWidth, bgHeight, 4).fill({ color: 0xf8fafc, alpha: 0.95 });
+    // Triangle tail pointing down
+    bg.moveTo(bgWidth / 2 - 4, bgHeight)
+      .lineTo(bgWidth / 2, bgHeight + 5)
+      .lineTo(bgWidth / 2 + 4, bgHeight)
+      .fill({ color: 0xf8fafc, alpha: 0.95 });
+
+    bubbleContainer.addChild(bg);
+    bubbleContainer.addChild(bubbleText);
+    bubbleContainer.x = sprite.container.x - bgWidth / 2;
+    bubbleContainer.y = sprite.container.y - this.tileSize - bgHeight - 4;
+
+    this.speechBubbleLayer.addChild(bubbleContainer);
+    this.speechBubbles.set(agentId, {
+      container: bubbleContainer,
+      createdAt: performance.now(),
+      duration: durationMs,
+      agentId,
+    });
+  }
+
+  showTransferAnimation(fromAgentId: string, toAgentId: string, itemColor = 0xfbbf24): void {
+    if (!this._initialized || !this.animationLayer) return;
+
+    const fromSprite = this.agentSprites.get(fromAgentId);
+    const toSprite = this.agentSprites.get(toAgentId);
+    if (!fromSprite || !toSprite) return;
+
+    const gfx = new Graphics();
+    gfx.circle(0, 0, 4).fill({ color: itemColor, alpha: 0.9 });
+    gfx.position.set(fromSprite.container.x, fromSprite.container.y);
+    this.animationLayer.addChild(gfx);
+
+    this.transferAnimations.push({
+      gfx,
+      fromX: fromSprite.container.x,
+      fromY: fromSprite.container.y,
+      toX: toSprite.container.x,
+      toY: toSprite.container.y,
+      progress: 0,
+      speed: 0.02,
+    });
+  }
+
+  updateTerritoryOverlay(territories: Array<{ positions: Array<{ x: number; y: number }>; color: number }>): void {
+    if (!this._initialized || !this.territoryLayer) return;
+    this.territoryLayer.clear();
+
+    for (const territory of territories) {
+      for (const pos of territory.positions) {
+        const radius = 3;
+        for (let dy = -radius; dy <= radius; dy++) {
+          for (let dx = -radius; dx <= radius; dx++) {
+            const tx = pos.x + dx;
+            const ty = pos.y + dy;
+            if (tx < 0 || ty < 0 || tx >= this.mapWidth || ty >= this.mapHeight) continue;
+            const dist = Math.abs(dx) + Math.abs(dy);
+            if (dist > radius) continue;
+            const alpha = 0.06 * (1 - dist / (radius + 1));
+            this.territoryLayer.rect(
+              tx * this.tileSize, ty * this.tileSize,
+              this.tileSize, this.tileSize,
+            ).fill({ color: territory.color, alpha });
+          }
+        }
+      }
+    }
+  }
+
+  private animateSpeechBubbles(): void {
+    const now = performance.now();
+    for (const [agentId, bubble] of this.speechBubbles) {
+      const elapsed = now - bubble.createdAt;
+      const sprite = this.agentSprites.get(agentId);
+      if (sprite) {
+        // Follow the agent
+        const bgWidth = bubble.container.width;
+        bubble.container.x = sprite.container.x - bgWidth / 2;
+        bubble.container.y = sprite.container.y - this.tileSize - bubble.container.height - 4;
+      }
+
+      // Fade out in the last 500ms
+      if (elapsed > bubble.duration - 500) {
+        bubble.container.alpha = Math.max(0, (bubble.duration - elapsed) / 500);
+      }
+
+      if (elapsed >= bubble.duration) {
+        this.speechBubbleLayer?.removeChild(bubble.container);
+        bubble.container.destroy({ children: true });
+        this.speechBubbles.delete(agentId);
+      }
+    }
+  }
+
+  private animateTransfers(): void {
+    for (let i = this.transferAnimations.length - 1; i >= 0; i--) {
+      const anim = this.transferAnimations[i];
+      anim.progress += anim.speed;
+      if (anim.progress >= 1) {
+        this.animationLayer?.removeChild(anim.gfx);
+        anim.gfx.destroy();
+        this.transferAnimations.splice(i, 1);
+        continue;
+      }
+      // Ease-in-out lerp
+      const t = anim.progress < 0.5
+        ? 2 * anim.progress * anim.progress
+        : 1 - Math.pow(-2 * anim.progress + 2, 2) / 2;
+      anim.gfx.x = anim.fromX + (anim.toX - anim.fromX) * t;
+      anim.gfx.y = anim.fromY + (anim.toY - anim.fromY) * t;
+      // Arc upward in the middle
+      anim.gfx.y -= Math.sin(t * Math.PI) * 15;
+    }
   }
 
   private animateAgents(): void {

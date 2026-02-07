@@ -3,7 +3,7 @@ import { AGENT_COLORS } from "../convex/lib/constants";
 
 export type AgentDoc = Doc<"agents">;
 
-export type WorldEvent = Pick<Doc<"worldEvents">, "_id" | "type" | "description" | "tick">;
+export type WorldEvent = Pick<Doc<"worldEvents">, "_id" | "type" | "description" | "tick" | "involvedAgentIds">;
 
 export interface AgentSpriteData {
   _id: string;
@@ -28,6 +28,13 @@ export interface BuildingData {
   posX: number;
   posY: number;
   level: number;
+  allianceId?: string;
+}
+
+export interface AllianceData {
+  _id: string;
+  name: string;
+  memberIds: string[];
 }
 
 export const STATUS_BADGE: Record<string, string> = {

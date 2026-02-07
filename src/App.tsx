@@ -11,6 +11,7 @@ export function App() {
   const events = useQuery(api.events.recent);
   const resources = useQuery(api.world.getResources);
   const buildings = useQuery(api.world.getBuildings);
+  const alliances = useQuery(api.world.getAlliances);
   const seedWorld = useMutation(api.init.seedWorld);
   const togglePause = useMutation(api.world.togglePause);
 
@@ -71,6 +72,8 @@ export function App() {
           agents={agents ?? []}
           resources={resources ?? []}
           buildings={buildings ?? []}
+          events={events ?? []}
+          alliances={(alliances ?? []).map((a) => ({ _id: a._id, name: a.name, memberIds: a.memberIds.map(String) }))}
           mapSeed={worldState.mapSeed}
           mapWidth={worldState.mapWidth}
           mapHeight={worldState.mapHeight}
