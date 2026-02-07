@@ -18,6 +18,7 @@ export function App() {
 
   const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
   const [directorMode, setDirectorMode] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const directorAgentId = (() => {
     if (!directorMode || !agents?.length || !worldState) return null;
@@ -66,8 +67,10 @@ export function App() {
         paused={worldState.paused}
         agentCount={agents?.length ?? 0}
         directorMode={directorMode}
+        sidebarOpen={sidebarOpen}
         onTogglePause={() => togglePause()}
         onToggleDirector={() => setDirectorMode((d) => !d)}
+        onToggleSidebar={() => setSidebarOpen((s) => !s)}
       />
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 relative">
@@ -85,23 +88,25 @@ export function App() {
             weather={worldState.weather}
             onAgentSelect={setSelectedAgentId}
           />
-          <ActivityFeed events={events ?? []} />
+          <ActivityFeed events={events ?? []} visible={!sidebarOpen} />
         </div>
-        <Sidebar
-          selectedAgent={selectedAgent}
-          agents={agents ?? []}
-          events={events ?? []}
-          worldState={worldState ? {
-            tick: worldState.tick,
-            timeOfDay: worldState.timeOfDay,
-            weather: worldState.weather,
-            season: worldState.season,
-            paused: worldState.paused,
-          } : null}
-          buildingCount={buildings?.length ?? 0}
-          allianceCount={alliances?.length ?? 0}
-          onAgentSelect={setSelectedAgentId}
-        />
+        {sidebarOpen && (
+          <Sidebar
+            selectedAgent={selectedAgent}
+            agents={agents ?? []}
+            events={events ?? []}
+            worldState={worldState ? {
+              tick: worldState.tick,
+              timeOfDay: worldState.timeOfDay,
+              weather: worldState.weather,
+              season: worldState.season,
+              paused: worldState.paused,
+            } : null}
+            buildingCount={buildings?.length ?? 0}
+            allianceCount={alliances?.length ?? 0}
+            onAgentSelect={setSelectedAgentId}
+          />
+        )}
       </div>
     </div>
   );
