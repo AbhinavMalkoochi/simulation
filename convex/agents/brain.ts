@@ -450,6 +450,10 @@ export const think = internalAction({
       score: r.score,
     }));
 
+    // Day count: 192 ticks per day (24 hours / 0.125 per tick)
+    const TICKS_PER_DAY = 192;
+    const day = Math.floor(tick / TICKS_PER_DAY) + 1;
+
     const systemPrompt = buildSystemPrompt({
       agent: { ...agent, _id: String(agentId), planSteps: agent.planSteps ?? undefined, planStep: agent.planStep ?? undefined },
       memories: scored.slice(0, 12),
@@ -485,6 +489,8 @@ export const think = internalAction({
       reputations: reputationEntries,
       timeOfDay: world.timeOfDay,
       weather: world.weather,
+      season: world.season,
+      day,
       tick,
     });
 

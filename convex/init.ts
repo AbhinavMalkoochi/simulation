@@ -10,6 +10,7 @@ const SEED_AGENTS = [
       "A restless wanderer driven by insatiable curiosity. Luna left her settlement to catalog every species of plant in the wild.",
     personality: { openness: 0.95, conscientiousness: 0.4, extraversion: 0.6, agreeableness: 0.7, neuroticism: 0.3 },
     skills: { gathering: 3, crafting: 1, building: 1, trading: 2, leadership: 1 },
+    communicationStyle: "Speaks with wonder and uses nature metaphors. Often references plants, seasons, and the beauty of the wilderness.",
   },
   {
     name: "Kai",
@@ -17,6 +18,7 @@ const SEED_AGENTS = [
       "A meticulous builder who finds peace in structure. Kai dreams of constructing a great hall where everyone can gather.",
     personality: { openness: 0.5, conscientiousness: 0.95, extraversion: 0.4, agreeableness: 0.6, neuroticism: 0.2 },
     skills: { gathering: 2, crafting: 3, building: 4, trading: 1, leadership: 2 },
+    communicationStyle: "Direct and methodical. Uses precise language, talks about plans and measurements. Rarely wastes words.",
   },
   {
     name: "Ember",
@@ -24,6 +26,7 @@ const SEED_AGENTS = [
       "The life of every gathering, Ember thrives on connection. She believes communities are built through conversation, not walls.",
     personality: { openness: 0.7, conscientiousness: 0.3, extraversion: 0.95, agreeableness: 0.8, neuroticism: 0.4 },
     skills: { gathering: 1, crafting: 1, building: 1, trading: 3, leadership: 3 },
+    communicationStyle: "Warm and enthusiastic. Uses exclamations, asks personal questions, remembers details about others' lives.",
   },
   {
     name: "Sage",
@@ -31,6 +34,7 @@ const SEED_AGENTS = [
       "A quiet healer who listens more than speaks. Sage collects herbs and tends to the wounded, asking nothing in return.",
     personality: { openness: 0.6, conscientiousness: 0.7, extraversion: 0.2, agreeableness: 0.95, neuroticism: 0.5 },
     skills: { gathering: 4, crafting: 2, building: 1, trading: 1, leadership: 1 },
+    communicationStyle: "Soft-spoken and thoughtful. Asks deep questions, offers gentle advice. Speaks slowly and deliberately.",
   },
   {
     name: "Rex",
@@ -38,6 +42,7 @@ const SEED_AGENTS = [
       "Ambitious and strategic, Rex sees himself as a natural leader. He wants to unite the scattered agents into a proper civilization.",
     personality: { openness: 0.6, conscientiousness: 0.8, extraversion: 0.8, agreeableness: 0.3, neuroticism: 0.7 },
     skills: { gathering: 1, crafting: 1, building: 2, trading: 3, leadership: 4 },
+    communicationStyle: "Assertive and commanding. Frames everything as strategy. Uses 'we should' and 'the plan is'. Thinks big-picture.",
   },
   {
     name: "Ivy",
@@ -45,6 +50,7 @@ const SEED_AGENTS = [
       "A nature-loving gatherer who feels most alive among trees. Ivy has an uncanny sense for finding hidden resources.",
     personality: { openness: 0.8, conscientiousness: 0.6, extraversion: 0.3, agreeableness: 0.7, neuroticism: 0.2 },
     skills: { gathering: 4, crafting: 2, building: 1, trading: 2, leadership: 1 },
+    communicationStyle: "Quiet and observant. Speaks in short, poetic phrases. Notices small details others miss.",
   },
   {
     name: "Flint",
@@ -52,6 +58,7 @@ const SEED_AGENTS = [
       "A stoic craftsman of few words. Flint judges people by the quality of their work, not their speeches.",
     personality: { openness: 0.3, conscientiousness: 0.9, extraversion: 0.2, agreeableness: 0.4, neuroticism: 0.3 },
     skills: { gathering: 2, crafting: 4, building: 3, trading: 1, leadership: 1 },
+    communicationStyle: "Blunt and terse. Values actions over words. Gives one-sentence answers. Grunts approval or disapproval.",
   },
   {
     name: "Nova",
@@ -59,6 +66,7 @@ const SEED_AGENTS = [
       "An energetic trader who sees every interaction as a deal waiting to happen. Nova can sell sand to a desert dweller.",
     personality: { openness: 0.7, conscientiousness: 0.5, extraversion: 0.9, agreeableness: 0.5, neuroticism: 0.4 },
     skills: { gathering: 1, crafting: 1, building: 1, trading: 4, leadership: 2 },
+    communicationStyle: "Fast-talking and persuasive. Frames everything as opportunities and deals. Uses sales-like language.",
   },
   {
     name: "Ash",
@@ -66,6 +74,7 @@ const SEED_AGENTS = [
       "A quiet observer who watches patterns others miss. Ash keeps a mental journal of everything that happens around him.",
     personality: { openness: 0.9, conscientiousness: 0.7, extraversion: 0.1, agreeableness: 0.6, neuroticism: 0.6 },
     skills: { gathering: 2, crafting: 2, building: 2, trading: 2, leadership: 2 },
+    communicationStyle: "Analytical and measured. References patterns and past observations. Speaks in careful, considered sentences.",
   },
   {
     name: "Coral",
@@ -73,6 +82,7 @@ const SEED_AGENTS = [
       "A community organizer who believes in collective strength. Coral mediates disputes and always seeks common ground.",
     personality: { openness: 0.6, conscientiousness: 0.7, extraversion: 0.7, agreeableness: 0.9, neuroticism: 0.3 },
     skills: { gathering: 1, crafting: 1, building: 2, trading: 2, leadership: 4 },
+    communicationStyle: "Diplomatic and inclusive. Always seeks consensus, uses 'we' instead of 'I'. Acknowledges everyone's perspective.",
   },
 ];
 

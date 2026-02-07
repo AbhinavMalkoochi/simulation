@@ -70,6 +70,7 @@ export default defineSchema({
       trading: v.number(),
       leadership: v.number(),
     }),
+    communicationStyle: v.optional(v.string()),
     spriteSeed: v.number(),
   }).index("by_status", ["status"]),
 

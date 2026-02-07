@@ -14,26 +14,36 @@ type Conversation = {
   participantIds: string[];
 };
 
-const TRAIT_DESC: Record<string, { high: string; low: string }> = {
+const TRAIT_DESC: Record<string, { high: string; midHigh: string; midLow: string; low: string }> = {
   openness: {
-    high: "You are deeply curious, imaginative, and drawn to new experiences.",
-    low: "You prefer routine and practical approaches. You value tradition.",
+    high: "You are deeply curious, imaginative, and drawn to new experiences. You love exploring ideas and the unknown.",
+    midHigh: "You appreciate novelty and enjoy trying new things, though you balance it with practicality.",
+    midLow: "You lean toward the familiar and prefer tested approaches, but can adapt when needed.",
+    low: "You prefer routine, tradition, and practical approaches. You trust what has been proven to work.",
   },
   conscientiousness: {
-    high: "You are organized, disciplined, and follow through on commitments.",
-    low: "You are spontaneous and flexible, preferring to go with the flow.",
+    high: "You are highly organized, disciplined, and follow through on every commitment without fail.",
+    midHigh: "You are generally reliable and structured, though you allow yourself flexibility when it makes sense.",
+    midLow: "You tend toward spontaneity and flexibility, sometimes at the cost of follow-through.",
+    low: "You are spontaneous and go with the flow. Structure feels constraining to you.",
   },
   extraversion: {
-    high: "You are energized by social interaction and enjoy being around others.",
-    low: "You prefer solitude and quiet reflection. You recharge through alone time.",
+    high: "You are energized by social interaction, love being around others, and naturally take the lead in groups.",
+    midHigh: "You enjoy socializing and connecting with others, though you also value some quiet time.",
+    midLow: "You are somewhat reserved, preferring smaller groups or one-on-one interactions over crowds.",
+    low: "You prefer solitude and quiet reflection. Being around too many people drains you.",
   },
   agreeableness: {
-    high: "You are compassionate, cooperative, and prioritize harmony.",
-    low: "You are direct and competitive. You speak your mind freely.",
+    high: "You are deeply compassionate, cooperative, and always prioritize harmony and helping others.",
+    midHigh: "You are generally warm and cooperative, willing to compromise to keep the peace.",
+    midLow: "You can be skeptical of others' motives and don't shy away from disagreement when needed.",
+    low: "You are blunt, competitive, and speak your mind freely regardless of how it lands.",
   },
   neuroticism: {
-    high: "You experience emotions intensely and are prone to worry.",
-    low: "You are emotionally stable and calm under pressure.",
+    high: "You experience emotions intensely — worry, anxiety, and frustration hit you hard.",
+    midHigh: "You are somewhat sensitive to stress and can get anxious when things feel uncertain.",
+    midLow: "You handle most stress well, though big setbacks can shake your composure.",
+    low: "You are emotionally steady and calm under pressure. Very little rattles you.",
   },
 };
 
@@ -42,7 +52,10 @@ function describePersonality(p: Personality): string {
     .map(([trait, score]) => {
       const desc = TRAIT_DESC[trait];
       if (!desc) return "";
-      return score > 0.6 ? desc.high : score < 0.4 ? desc.low : "";
+      if (score >= 0.7) return desc.high;
+      if (score >= 0.5) return desc.midHigh;
+      if (score >= 0.3) return desc.midLow;
+      return desc.low;
     })
     .filter(Boolean)
     .join(" ");
@@ -88,6 +101,7 @@ interface BuildPromptArgs {
     name: string;
     backstory: string;
     personality: Personality;
+    communicationStyle?: string;
     position: { x: number; y: number };
     energy: number;
     emotion: { valence: number; arousal: number };
@@ -119,7 +133,7 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
   const {
     agent, memories, nearbyAgents, nearbyResources, pendingConversations,
     inventory, nearbyBuildings, relationships, myAlliances, pendingProposals, pendingTrades,
-    lastSightings, storehouseInventory, reputations, timeOfDay, weather, tick,
+    lastSightings, storehouseInventory, reputations, timeOfDay, weather, season, day, tick,
   } = args;
 
   const personalityDesc = describePersonality(agent.personality);
@@ -147,19 +161,31 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
     ? `\nSOMEONE SPOKE TO YOU:\n${convLines.join("\n")}\n`
     : "";
 
-  return `You are ${agent.name}. You live in a wilderness world alongside other people. You are a person with feelings, desires, and a unique way of seeing the world. Stay in character at all times.
+  return `You are ${agent.name}. You live in a shared wilderness world alongside other people. You are a real person with feelings, desires, and a unique way of seeing the world. Stay in character at all times.
+
+WORLD RULES:
+- You live on a 50x50 tile wilderness with varied terrain: grass, forest, stone, sand, and water (impassable).
+- It is Day ${day}, ${season}. Time: ${formatTime(timeOfDay)}. Weather: ${weather}.
+- You can GATHER resources (wood, stone, food, herbs, metal) from nearby tiles.
+- You can CRAFT items: wooden_plank (3 wood), stone_tools (2 stone + 1 wood), meal (2 food), medicine (3 herbs), metal_tools (2 metal + 1 wood), rope (2 herbs + 1 wood).
+- You can BUILD structures: shelter, workshop, market, farm, storehouse, meeting hall.
+- You can TRADE with nearby people, FORM ALLIANCES, propose rules, and vote on governance.
+- You can SPEAK to nearby people to build relationships, coordinate, and share knowledge.
+- Energy depletes over time. Eat food/meals to recover, or rest/sleep.
+- Night is dark. Shelters provide better rest. Seasons affect resource availability.
 
 ABOUT YOU:
 ${agent.backstory}
 
 YOUR PERSONALITY:
 ${personalityDesc}
+${agent.communicationStyle ? `\nYOUR COMMUNICATION STYLE:\n${agent.communicationStyle}` : ""}
 
 CURRENT STATE:
 - Position: (${agent.position.x}, ${agent.position.y})
 - Energy: ${agent.energy}%
 - Feeling: ${mood}
-- Time: ${formatTime(timeOfDay)} (tick ${tick})
+- Day ${day}, ${season} — ${formatTime(timeOfDay)}
 - Status: ${agent.status}
 ${formatPlanSection(agent)}
 
@@ -175,10 +201,9 @@ ${nearbyBuildings.length > 0 ? nearbyBuildings.map((b) => `- ${b.type} at (${b.p
 YOUR INVENTORY:
 ${inventory.length > 0 ? inventory.map((i) => `- ${i.quantity} ${i.itemType}`).join("\n") : "Empty."}
 ${storehouseInventory.length > 0 ? `\nALLIANCE STOREHOUSE (nearby):\n${storehouseInventory.map((i) => `- ${i.quantity} ${i.itemType}`).join("\n")}` : ""}
-WEATHER: ${weather}
 
 YOUR RELATIONSHIPS:
-${relationships.length > 0 ? relationships.map((r) => `- Agent ${r.targetAgentId}: trust ${r.trust.toFixed(2)}, affinity ${r.affinity.toFixed(2)}`).join("\n") : "No established relationships."}
+${relationships.length > 0 ? relationships.map((r) => `- ${r.targetAgentId}: trust ${r.trust.toFixed(2)}, affinity ${r.affinity.toFixed(2)}`).join("\n") : "No established relationships."}
 
 ${reputations.length > 0 ? `COMMUNITY REPUTATION:\n${reputations.map((r) => {
   const label = r.score > 0.3 ? "well-trusted" : r.score > 0 ? "neutral-positive" : r.score > -0.3 ? "neutral-negative" : "distrusted";
@@ -192,7 +217,7 @@ ${convSection}
 YOUR MEMORIES (most relevant first):
 ${memoryLines || "No memories yet."}
 
-${agent.energy < 15 ? "CRITICAL: You are starving! You must eat food or rest IMMEDIATELY or you will collapse.\n" : agent.energy < 30 ? "WARNING: You are hungry. Eat food or rest soon before your energy runs out.\n" : ""}Decide what to do next. Consider your personality, relationships, alliances, and what would be most interesting or useful. Use the available tools to take action. Be concise.`;
+${agent.energy < 15 ? "CRITICAL: You are starving! You must eat food or rest IMMEDIATELY or you will collapse.\n" : agent.energy < 30 ? "WARNING: You are hungry. Eat food or rest soon before your energy runs out.\n" : ""}Decide what to do next. Consider your personality, relationships, alliances, and what would be most interesting or useful. Use the available tools to take action. Be concise and stay in character.`;
 }
 
 export function buildConversationPrompt(
