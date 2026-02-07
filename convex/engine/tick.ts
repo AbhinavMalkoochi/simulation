@@ -203,6 +203,8 @@ export const run = internalMutation({
     const TICKS_PER_DAY = 192;
     if (newTimeOfDay < world.timeOfDay && newTick > TICKS_PER_DAY) {
       const completedDay = Math.floor((newTick - 1) / TICKS_PER_DAY);
+
+      // Generate per-agent day summaries
       for (const agent of agents) {
         await ctx.scheduler.runAfter(
           Math.floor(Math.random() * 5000),
@@ -210,6 +212,14 @@ export const run = internalMutation({
           { agentId: agent._id, day: completedDay, tick: newTick },
         );
       }
+
+      // Generate global world day summary (delayed to give events time to settle)
+      await ctx.scheduler.runAfter(
+        8000,
+        internal.analytics.dailySummary.generateWorldDaySummary,
+        { day: completedDay, tick: newTick },
+      );
+
       await ctx.db.insert("worldEvents", {
         type: "god_action",
         description: `A new day dawns. Day ${completedDay + 1} begins.`,
