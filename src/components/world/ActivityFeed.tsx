@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import type { WorldEvent } from "../../types";
 
 interface ActivityFeedProps {
@@ -29,17 +28,9 @@ function truncate(text: string, maxLen: number): string {
 }
 
 export function ActivityFeed({ events }: ActivityFeedProps) {
-  const processedRef = useRef(new Set<string>());
-
-  // Only show recent events (not tick summaries or god actions)
   const recentEvents = events
     .filter((e) => e.type !== "tick_summary" && e.type !== "world_created")
     .slice(0, MAX_VISIBLE);
-
-  // Track which events we've seen for animation purposes
-  for (const event of recentEvents) {
-    processedRef.current.add(event._id);
-  }
 
   if (recentEvents.length === 0) return null;
 

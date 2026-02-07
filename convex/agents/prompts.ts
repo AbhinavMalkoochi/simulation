@@ -136,7 +136,7 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
   const {
     agent, memories, nearbyAgents, nearbyResources, pendingConversations,
     inventory, nearbyBuildings, relationships, myAlliances, pendingProposals, pendingTrades,
-    lastSightings, storehouseInventory, reputations, daySummaries, timeOfDay, weather, season, day, tick,
+    lastSightings, storehouseInventory, reputations, daySummaries, timeOfDay, weather, season, day,
   } = args;
 
   const personalityDesc = describePersonality(agent.personality);
@@ -224,9 +224,10 @@ ${agent.energy < 15 ? "CRITICAL: You are starving! You must eat food or rest IMM
 }
 
 export function buildConversationPrompt(
-  agent: { name: string; backstory: string; personality: Personality; emotion: { valence: number; arousal: number } },
+  agent: { name: string; backstory: string; personality: Personality; communicationStyle?: string; emotion: { valence: number; arousal: number } },
   partnerName: string,
   messages: Array<{ speakerName: string; content: string }>,
+  previousConversationSummary?: string,
 ): string {
   const personalityDesc = describePersonality(agent.personality);
   const mood = describeMood(agent.emotion.valence, agent.emotion.arousal);
@@ -235,8 +236,9 @@ export function buildConversationPrompt(
   return `You are ${agent.name}. ${agent.backstory}
 
 YOUR PERSONALITY: ${personalityDesc}
+${agent.communicationStyle ? `YOUR COMMUNICATION STYLE: ${agent.communicationStyle}` : ""}
 YOUR MOOD: ${mood}
-
+${previousConversationSummary ? `\nPREVIOUS CONVERSATIONS WITH ${partnerName.toUpperCase()}:\n${previousConversationSummary}\n` : ""}
 ${partnerName} is talking to you. Here is the conversation so far:
 ${messageLines}
 
@@ -245,7 +247,7 @@ Respond naturally in character. You may:
 - Use the think tool to record a private thought
 - Use the setPlan tool if the conversation inspires a new goal
 
-Keep your response brief and natural (1-2 sentences). Be genuine to your personality.`;
+Keep your response brief and natural (1-2 sentences). Be genuine to your personality and communication style.`;
 }
 
 export function buildReflectionPrompt(

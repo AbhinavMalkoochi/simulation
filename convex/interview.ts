@@ -18,8 +18,10 @@ export const ask = action({
     );
     if (!context || !context.world) return "Agent not found.";
 
-    const { agent, world, memories, nearbyAgents, nearbyResources, pendingConversations, inventory, nearbyBuildings } = context;
+    const { agent, world, memories, nearbyAgents, nearbyResources, pendingConversations, inventory, nearbyBuildings, daySummaries } = context;
     const tick = world.tick;
+    const TICKS_PER_DAY = 192;
+    const day = Math.floor(tick / TICKS_PER_DAY) + 1;
     const scored = scoreMemories(memories, tick);
 
     const systemPrompt = `${buildSystemPrompt({
@@ -37,8 +39,11 @@ export const ask = action({
       lastSightings: [],
       storehouseInventory: [],
       reputations: [],
+      daySummaries: (daySummaries ?? []).map((s) => ({ content: s.content, day: s.day ?? undefined })),
       timeOfDay: world.timeOfDay,
       weather: world.weather,
+      season: world.season,
+      day,
       tick,
     })}
 

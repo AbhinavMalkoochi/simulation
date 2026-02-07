@@ -25,7 +25,10 @@ export function WorldCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<GameWorld | null>(null);
   const callbackRef = useRef(onAgentSelect);
-  callbackRef.current = onAgentSelect;
+
+  useEffect(() => {
+    callbackRef.current = onAgentSelect;
+  });
 
   // Initialize/teardown GameWorld (only when map config changes)
   useEffect(() => {
