@@ -57,6 +57,55 @@ export async function hasItems(
   return true;
 }
 
+export async function addItemWithDurability(
+  ctx: MutationCtx,
+  agentId: Id<"agents">,
+  itemType: string,
+  quantity: number,
+  durability: number,
+): Promise<void> {
+  const existing = await ctx.db
+    .query("inventory")
+    .withIndex("by_agent_item", (q) => q.eq("agentId", agentId).eq("itemType", itemType))
+    .first();
+
+  if (existing) {
+    await ctx.db.patch(existing._id, { quantity: existing.quantity + quantity, durability });
+  } else {
+    await ctx.db.insert("inventory", { agentId, itemType, quantity, durability });
+  }
+}
+
+/** Reduce durability of a tool by amount. Removes the item if durability reaches 0. Returns remaining durability or -1 if item not found. */
+export async function degradeItem(
+  ctx: MutationCtx,
+  agentId: Id<"agents">,
+  itemType: string,
+  amount: number,
+): Promise<number> {
+  const existing = await ctx.db
+    .query("inventory")
+    .withIndex("by_agent_item", (q) => q.eq("agentId", agentId).eq("itemType", itemType))
+    .first();
+
+  if (!existing) return -1;
+  const currentDurability = existing.durability ?? 999;
+  const newDurability = currentDurability - amount;
+
+  if (newDurability <= 0) {
+    // Tool broke — remove one unit
+    if (existing.quantity <= 1) {
+      await ctx.db.delete(existing._id);
+    } else {
+      await ctx.db.patch(existing._id, { quantity: existing.quantity - 1, durability: undefined });
+    }
+    return 0;
+  }
+
+  await ctx.db.patch(existing._id, { durability: newDurability });
+  return newDurability;
+}
+
 export async function getInventory(
   ctx: QueryCtx | MutationCtx,
   agentId: Id<"agents">,

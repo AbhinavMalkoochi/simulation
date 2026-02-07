@@ -3,7 +3,7 @@ import { internal } from "../_generated/api";
 import { generateMap, isWalkable } from "../lib/mapgen";
 import { seededRandom, formatTime } from "../lib/utils";
 import { findPath } from "./pathfinding";
-import { nextWeather, regenerateResources, applyBuildingEffects } from "../world/systems";
+import { nextWeather, regenerateResources, applyBuildingEffects, decayBuildings } from "../world/systems";
 import { ENERGY } from "../lib/constants";
 
 export const run = internalMutation({
@@ -159,6 +159,11 @@ export const run = internalMutation({
     // Building effects (farm food production) every 10 ticks
     if (newTick % 10 === 0) {
       await applyBuildingEffects(ctx);
+    }
+
+    // Building decay every 20 ticks
+    if (newTick % 20 === 0) {
+      await decayBuildings(ctx);
     }
 
     // Season transition every 192 ticks (~4 in-game days)

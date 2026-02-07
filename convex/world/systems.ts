@@ -1,5 +1,5 @@
 import type { MutationCtx } from "../_generated/server";
-import { RESOURCES } from "../lib/constants";
+import { RESOURCES, BUILDING_DECAY_RATE } from "../lib/constants";
 
 const WEATHER_TRANSITIONS: Record<string, Array<{ next: string; weight: number }>> = {
   clear: [
@@ -74,6 +74,17 @@ export async function applyBuildingEffects(ctx: MutationCtx): Promise<void> {
         quantity: 1,
         maxQuantity: 10,
         regenRate: 0.5,
+      });
+    }
+  }
+}
+
+export async function decayBuildings(ctx: MutationCtx): Promise<void> {
+  const buildings = await ctx.db.query("buildings").collect();
+  for (const b of buildings) {
+    if (b.condition > 0) {
+      await ctx.db.patch(b._id, {
+        condition: Math.max(0, b.condition - BUILDING_DECAY_RATE),
       });
     }
   }

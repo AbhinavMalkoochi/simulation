@@ -2,10 +2,10 @@ import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { generateMap, isWalkable } from "../lib/mapgen";
 import { findPath } from "../engine/pathfinding";
-import { addItem, removeItem, hasItems, getInventory } from "../world/inventory";
+import { addItem, removeItem, hasItems, getInventory, degradeItem, addItemWithDurability } from "../world/inventory";
 import { findRecipe, BUILDING_COSTS } from "../world/recipes";
 import { updateRelationship } from "../social/relationships";
-import { ENERGY } from "../lib/constants";
+import { ENERGY, DURABILITY } from "../lib/constants";
 
 export const moveAgent = internalMutation({
   args: {
@@ -438,6 +438,38 @@ export const checkInventory = internalMutation({
     const items = await getInventory(ctx, agentId);
     if (items.length === 0) return "Your inventory is empty.";
     return "Inventory: " + items.map((i) => `${i.quantity} ${i.itemType}`).join(", ") + ".";
+  },
+});
+
+// --- Building Repair (Tier 2) ---
+
+export const repairBuilding = internalMutation({
+  args: { agentId: v.id("agents") },
+  handler: async (ctx, { agentId }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    const building = await ctx.db
+      .query("buildings")
+      .withIndex("by_position", (q) => q.eq("posX", agent.position.x).eq("posY", agent.position.y))
+      .first();
+
+    if (!building) return "No building at your location.";
+    if (building.condition >= 100) return "Building is already in perfect condition.";
+
+    const repairCost = [{ type: "wood", quantity: 2 }, { type: "stone", quantity: 1 }];
+    const hasMaterials = await hasItems(ctx, agentId, repairCost);
+    if (!hasMaterials) return "Need 2 wood + 1 stone to repair.";
+
+    for (const item of repairCost) {
+      await removeItem(ctx, agentId, item.type, item.quantity);
+    }
+
+    const newCondition = Math.min(100, building.condition + 20);
+    await ctx.db.patch(building._id, { condition: newCondition });
+    await ctx.db.patch(agentId, { status: "working", energy: Math.max(0, agent.energy - 5) });
+
+    return `Repaired ${building.type} to ${newCondition}% condition.`;
   },
 });
 

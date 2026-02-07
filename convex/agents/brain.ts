@@ -264,6 +264,14 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
       },
     }),
 
+    repairBuilding: tool({
+      description: "Repair the building at your current location. Costs 2 wood + 1 stone, restores 20 condition.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        return ctx.runMutation(internal.agents.actions.repairBuilding, { agentId });
+      },
+    }),
+
     seekAgent: tool({
       description: "Move toward a specific person. Uses their current position if visible, or their last known location if not.",
       inputSchema: z.object({
