@@ -52,7 +52,13 @@ type LastSighting = {
   position: { x: number; y: number };
   ticksAgo: number;
 };
-type Alliance = { name: string; memberIds: string[]; rules: string[] };
+type Alliance = {
+  name: string;
+  memberIds: string[];
+  rules: string[];
+  orgType?: string;
+  ideology?: string;
+};
 type PendingProposal = { _id: string; content: string; allianceName?: string };
 type PendingTrade = {
   offer: Array<{ itemType: string; quantity: number }>;
@@ -459,8 +465,13 @@ ${storehouseInventory.length > 0 ? `\nALLIANCE STOREHOUSE:\n${storehouseInventor
 YOUR RELATIONSHIPS:
 ${relationshipLines}
 
-${reputationLines ? `COMMUNITY STANDING:\n${reputationLines}\n` : ""}YOUR ALLIANCES:
-${myAlliances.length > 0 ? myAlliances.map((a) => `- "${a.name}" (${a.memberIds.length} members)${a.rules.length > 0 ? ` Rules: ${a.rules.join("; ")}` : ""}`).join("\n") : "None."}
+${reputationLines ? `COMMUNITY STANDING:\n${reputationLines}\n` : ""}YOUR ORGANIZATIONS:
+${myAlliances.length > 0 ? myAlliances.map((a) => {
+  const type = a.orgType ?? "alliance";
+  const ideology = a.ideology ? ` Mission: "${a.ideology}"` : "";
+  const rules = a.rules.length > 0 ? ` Rules: ${a.rules.join("; ")}` : "";
+  return `- "${a.name}" [${type}] (${a.memberIds.length} members)${ideology}${rules}`;
+}).join("\n") : "None. Consider founding something — an alliance, company, religion, club, or philosophy group."}
 ${pendingProposals.length > 0 ? `\nPENDING PROPOSALS TO VOTE ON:\n${pendingProposals.map((p) => `- [id: ${p._id}] "${p.content}" (in ${p.allianceName ?? "unknown alliance"})`).join("\n")}` : ""}
 ${pendingTrades.length > 0 ? `\nPENDING TRADE OFFERS:\n${pendingTrades.map((t) => `- ${t.initiatorName ?? "Someone"} offers ${t.offer.map((o) => `${o.quantity} ${o.itemType}`).join(", ")} for ${t.request.map((r) => `${r.quantity} ${r.itemType}`).join(", ")}`).join("\n")}` : ""}
 ${beliefs.length > 0 ? `YOUR BELIEFS AND VALUES:\n${beliefs.map((b) => {

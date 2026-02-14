@@ -164,6 +164,15 @@ export default defineSchema({
     memberIds: v.array(v.id("agents")),
     rules: v.array(v.string()),
     description: v.optional(v.string()),
+    orgType: v.optional(v.union(
+      v.literal("alliance"),
+      v.literal("company"),
+      v.literal("religion"),
+      v.literal("club"),
+      v.literal("cult"),
+    )),
+    ideology: v.optional(v.string()),
+    rituals: v.optional(v.array(v.string())),
   }).index("by_founder", ["founderId"]),
 
   proposals: defineTable({

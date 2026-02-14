@@ -280,12 +280,14 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
     }),
 
     formAlliance: tool({
-      description: "Found a new alliance or group.",
+      description: "Found a new organization: alliance, company, religion, club, or cult. Choose the type that fits your vision.",
       inputSchema: z.object({
-        name: z.string().describe("Name for the alliance"),
+        name: z.string().describe("Name for the organization"),
+        orgType: z.enum(["alliance", "company", "religion", "club", "cult"]).describe("Type of organization"),
+        ideology: z.string().optional().describe("Core mission, belief, or purpose of the organization"),
       }),
-      execute: async ({ name }) => {
-        return ctx.runMutation(internal.social.alliances.create, { founderId: agentId, name });
+      execute: async ({ name, orgType, ideology }) => {
+        return ctx.runMutation(internal.social.alliances.create, { founderId: agentId, name, orgType, ideology });
       },
     }),
 
@@ -496,6 +498,8 @@ export const think = internalAction({
         name: a.name,
         memberIds: a.memberIds.map(String),
         rules: a.rules,
+        orgType: a.orgType,
+        ideology: a.ideology,
       })),
       pendingProposals: myPendingProposals.map((p) => ({
         _id: p._id as string,

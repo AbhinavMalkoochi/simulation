@@ -1,39 +1,64 @@
 import { internalMutation } from "../_generated/server";
+import type { MutationCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { hasBuildingBonus } from "../world/systems";
 import { BUILDING_BONUS } from "../lib/constants";
+
+async function improveLeadership(ctx: MutationCtx, agentId: Id<"agents">, amount: number) {
+  const agent = await ctx.db.get(agentId);
+  if (!agent || agent.skills.leadership >= 10) return;
+  await ctx.db.patch(agentId, {
+    skills: { ...agent.skills, leadership: Math.round(Math.min(10, agent.skills.leadership + amount) * 100) / 100 },
+  });
+}
 
 export const create = internalMutation({
   args: {
     founderId: v.id("agents"),
     name: v.string(),
+    orgType: v.optional(v.union(
+      v.literal("alliance"),
+      v.literal("company"),
+      v.literal("religion"),
+      v.literal("club"),
+      v.literal("cult"),
+    )),
+    ideology: v.optional(v.string()),
   },
-  handler: async (ctx, { founderId, name }) => {
+  handler: async (ctx, { founderId, name, orgType, ideology }) => {
     const existing = await ctx.db.query("alliances").collect();
     if (existing.find((a) => a.name.toLowerCase() === name.toLowerCase())) {
-      return `An alliance named "${name}" already exists.`;
+      return `An organization named "${name}" already exists.`;
     }
 
     const founder = await ctx.db.get(founderId);
     if (!founder) return "Agent not found.";
+
+    const type = orgType ?? "alliance";
 
     await ctx.db.insert("alliances", {
       name,
       founderId,
       memberIds: [founderId],
       rules: [],
-      description: `Alliance founded by ${founder.name}.`,
+      description: `${type.charAt(0).toUpperCase() + type.slice(1)} founded by ${founder.name}.${ideology ? ` Mission: ${ideology}` : ""}`,
+      orgType: type,
+      ideology,
+      rituals: [],
     });
 
     const world = await ctx.db.query("worldState").first();
     await ctx.db.insert("worldEvents", {
       type: "alliance",
-      description: `${founder.name} founded the "${name}" alliance.`,
+      description: `${founder.name} founded "${name}" (${type}).${ideology ? ` Mission: ${ideology}` : ""}`,
       involvedAgentIds: [founderId],
       tick: world?.tick ?? 0,
     });
 
-    return `Founded the "${name}" alliance.`;
+    await improveLeadership(ctx, founderId, 0.15);
+
+    return `Founded "${name}" as a ${type}.`;
   },
 });
 
