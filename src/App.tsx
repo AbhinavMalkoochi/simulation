@@ -29,7 +29,13 @@ export function App() {
     return pool[worldState.tick % pool.length]?._id ?? null;
   }, [directorMode, agents, worldState]);
 
+  const allianceData = useMemo(
+    () => (alliances ?? []).map((a) => ({ _id: a._id, name: a.name, memberIds: a.memberIds.map(String) })),
+    [alliances],
+  );
+
   const effectiveAgentId = directorMode ? directorAgentId : selectedAgentId;
+  const selectedAgent = agents?.find((a) => a._id === effectiveAgentId) ?? null;
 
   if (worldState === undefined) {
     return (
@@ -57,13 +63,6 @@ export function App() {
       </div>
     );
   }
-
-  const allianceData = useMemo(
-    () => (alliances ?? []).map((a) => ({ _id: a._id, name: a.name, memberIds: a.memberIds.map(String) })),
-    [alliances],
-  );
-
-  const selectedAgent = agents?.find((a) => a._id === effectiveAgentId) ?? null;
 
   return (
     <div className="h-screen flex flex-col bg-neutral-50">
