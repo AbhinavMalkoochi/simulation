@@ -1,10 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useRef, useEffect, useState } from "react";
 import { MessageSquare, Handshake, Sword, Vote, Building2, Sprout, Hammer, Gift, Zap, Globe, AlertCircle, Flag } from "lucide-react";
 import type { WorldEvent } from "../../types";
-
-interface EventFeedProps {
-  events: WorldEvent[];
-}
 
 const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   conversation: MessageSquare,
@@ -45,12 +41,12 @@ const FILTER_OPTIONS = [
   { id: "gather", label: "Gather" },
 ] as const;
 
-export function EventFeed({ events }: EventFeedProps) {
+export function EventFeed({ events }: { events: WorldEvent[] }) {
   const [filter, setFilter] = useState("all");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const filtered = filter === "all"
-    ? events.filter((e) => e.type !== "tick_summary")
+    ? events.filter((e) => e.type !== "tick_summary" && e.type !== "daily_summary")
     : events.filter((e) => e.type === filter);
 
   useEffect(() => {
@@ -60,7 +56,7 @@ export function EventFeed({ events }: EventFeedProps) {
   }, [filtered]);
 
   return (
-    <div className="flex flex-col gap-2 overflow-y-auto flex-1 min-h-0">
+    <div className="flex flex-col gap-2 flex-1 min-h-0">
       <div className="flex gap-1 flex-wrap mb-0.5 shrink-0">
         {FILTER_OPTIONS.map((opt) => (
           <button
@@ -76,7 +72,7 @@ export function EventFeed({ events }: EventFeedProps) {
           </button>
         ))}
       </div>
-      <div ref={scrollRef} className="flex flex-col gap-1 overflow-y-auto">
+      <div ref={scrollRef} className="flex flex-col gap-1 overflow-y-auto flex-1">
         {filtered.length === 0 && (
           <p className="text-xs text-neutral-400 italic py-2">No events match this filter</p>
         )}
@@ -87,7 +83,7 @@ export function EventFeed({ events }: EventFeedProps) {
               <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${TYPE_DOT[event.type] ?? "bg-neutral-400"}`} />
               <div className="flex items-start gap-1.5 flex-1 min-w-0">
                 {IconComponent && (
-                  <IconComponent className="w-3 h-3 mt-0.5 shrink-0 text-neutral-500 flex-shrink-0" />
+                  <IconComponent className="w-3 h-3 mt-0.5 shrink-0 text-neutral-500" />
                 )}
                 <span className="text-[12px] text-neutral-700 leading-relaxed">
                   {event.description}

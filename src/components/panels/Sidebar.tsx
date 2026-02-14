@@ -6,7 +6,6 @@ import { AgentInspector } from "./AgentInspector";
 import { SocialGraph } from "./SocialGraph";
 import { EconomyDashboard } from "./EconomyDashboard";
 import { Newspaper } from "./Newspaper";
-import { StoryNarrator } from "./StoryNarrator";
 import { GodMode } from "./GodMode";
 import { WorldOverview } from "./WorldOverview";
 import { AgentAvatar } from "../ui/AgentAvatar";
@@ -27,8 +26,8 @@ const TABS = [
   { id: "agents", label: "Agents" },
   { id: "social", label: "Social" },
   { id: "economy", label: "Economy" },
-  { id: "news", label: "News" },
-  { id: "story", label: "Story" },
+  { id: "chronicle", label: "Chronicle" },
+  { id: "events", label: "Events" },
   { id: "god", label: "Control" },
 ] as const;
 
@@ -48,16 +47,11 @@ export function Sidebar({ selectedAgent, agents, events, worldState, buildingCou
   const relationships = useQuery(api.world.getRelationships);
   const alliances = useQuery(api.world.getAlliances);
   const economyStats = useQuery(api.analytics.stats.getEconomyStats);
-  const newspaper = useQuery(api.analytics.newspaper.getLatestSummary);
 
   if (selectedAgent) {
     return (
       <aside className="w-80 bg-white border-l border-neutral-200 flex flex-col overflow-hidden">
         <AgentInspector agent={selectedAgent} onClose={() => onAgentSelect(null)} />
-        <div className="p-4 border-t border-neutral-100 shrink-0 overflow-hidden flex flex-col" style={{ maxHeight: "28%" }}>
-          <h2 className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2">Events</h2>
-          <EventFeed events={events} />
-        </div>
       </aside>
     );
   }
@@ -123,16 +117,11 @@ export function Sidebar({ selectedAgent, agents, events, worldState, buildingCou
 
         {activeTab === "economy" && <EconomyDashboard stats={economyStats} />}
 
-        {activeTab === "news" && <Newspaper data={newspaper} />}
+        {activeTab === "chronicle" && <Newspaper />}
 
-        {activeTab === "story" && <StoryNarrator />}
+        {activeTab === "events" && <EventFeed events={events} />}
 
         {activeTab === "god" && <GodMode />}
-      </div>
-
-      <div className="p-4 border-t border-neutral-100 shrink-0 overflow-hidden flex flex-col" style={{ maxHeight: "28%" }}>
-        <h2 className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider mb-2">Events</h2>
-        <EventFeed events={events} />
       </div>
     </aside>
   );
