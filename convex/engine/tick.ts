@@ -4,7 +4,7 @@ import { generateMap, isWalkable } from "../lib/mapgen";
 import { seededRandom, formatTime } from "../lib/utils";
 import { findPath } from "./pathfinding";
 import { nextWeather, regenerateResources, applyBuildingEffects, decayBuildings, hasBuildingBonus } from "../world/systems";
-import { ENERGY } from "../lib/constants";
+import { ENERGY, PERCEPTION } from "../lib/constants";
 
 export const run = internalMutation({
   handler: async (ctx) => {
@@ -128,35 +128,62 @@ export const run = internalMutation({
       }
 
       if (agent.status === "idle" && !shouldThink) {
-        // Don't wander if agent has a locked plan — let the think cycle drive movement
         if (agent.planSteps && agent.planStep !== undefined) continue;
 
-        const shouldWander = rand() > 0.6;
-        if (!shouldWander) continue;
+        const roll = rand();
 
-        const radius = 3 + Math.floor(rand() * 4);
-        let targetX: number, targetY: number;
-        let attempts = 0;
-        do {
-          targetX = Math.floor(agent.position.x + (rand() - 0.5) * radius * 2);
-          targetY = Math.floor(agent.position.y + (rand() - 0.5) * radius * 2);
-          attempts++;
-        } while (
-          !isWalkable(targetX, targetY, mapTiles, world.mapWidth, world.mapHeight) &&
-          attempts < 8
-        );
-        if (attempts >= 8) continue;
-
-        const path = findPath(agent.position, { x: targetX, y: targetY }, mapTiles, world.mapWidth, world.mapHeight);
-        if (path.length > 1) {
-          await ctx.db.patch(agent._id, {
-            position: path[1],
-            path: path.length > 2 ? path.slice(2) : undefined,
-            targetPosition: path.length > 2 ? { x: targetX, y: targetY } : undefined,
-            status: path.length > 2 ? "moving" : "idle",
-            energy: Math.round(Math.max(0, agent.energy - ENERGY.MOVEMENT_COST)),
-          });
+        // 40% chance: seek out another agent for social interaction
+        if (roll < 0.4) {
+          const otherAgents = agents.filter((a) =>
+            a._id !== agent._id &&
+            a.status !== "sleeping" &&
+            (Math.abs(a.position.x - agent.position.x) > PERCEPTION.AGENT_RANGE ||
+             Math.abs(a.position.y - agent.position.y) > PERCEPTION.AGENT_RANGE),
+          );
+          if (otherAgents.length > 0) {
+            const target = otherAgents[Math.floor(rand() * otherAgents.length)];
+            const path = findPath(agent.position, target.position, mapTiles, world.mapWidth, world.mapHeight);
+            if (path.length > 1) {
+              await ctx.db.patch(agent._id, {
+                position: path[1],
+                path: path.length > 2 ? path.slice(2) : undefined,
+                targetPosition: path.length > 2 ? target.position : undefined,
+                status: path.length > 2 ? "moving" : "idle",
+                energy: Math.round(Math.max(0, agent.energy - ENERGY.MOVEMENT_COST)),
+              });
+              continue;
+            }
+          }
         }
+
+        // 15% chance: short random wander
+        if (roll >= 0.4 && roll < 0.55) {
+          const radius = 3 + Math.floor(rand() * 3);
+          let targetX: number, targetY: number;
+          let attempts = 0;
+          do {
+            targetX = Math.floor(agent.position.x + (rand() - 0.5) * radius * 2);
+            targetY = Math.floor(agent.position.y + (rand() - 0.5) * radius * 2);
+            attempts++;
+          } while (
+            !isWalkable(targetX, targetY, mapTiles, world.mapWidth, world.mapHeight) &&
+            attempts < 8
+          );
+          if (attempts >= 8) continue;
+
+          const path = findPath(agent.position, { x: targetX, y: targetY }, mapTiles, world.mapWidth, world.mapHeight);
+          if (path.length > 1) {
+            await ctx.db.patch(agent._id, {
+              position: path[1],
+              path: path.length > 2 ? path.slice(2) : undefined,
+              targetPosition: path.length > 2 ? { x: targetX, y: targetY } : undefined,
+              status: path.length > 2 ? "moving" : "idle",
+              energy: Math.round(Math.max(0, agent.energy - ENERGY.MOVEMENT_COST)),
+            });
+          }
+        }
+
+        // 45% chance: stay idle and wait for next think cycle
       }
     }
 

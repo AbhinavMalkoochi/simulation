@@ -1,5 +1,5 @@
-export const MAP_WIDTH = 80;
-export const MAP_HEIGHT = 80;
+export const MAP_WIDTH = 50;
+export const MAP_HEIGHT = 50;
 export const MAP_SEED = 42;
 export const TILE_SIZE = 32;
 
@@ -99,22 +99,22 @@ export interface MapRegion {
 }
 
 export const MAP_REGIONS: readonly MapRegion[] = [
-  { name: "Northshore Beach", xMin: 0, xMax: 19, yMin: 0, yMax: 19 },
-  { name: "Pine Hollow", xMin: 20, xMax: 39, yMin: 0, yMax: 19 },
-  { name: "Iron Summit", xMin: 40, xMax: 59, yMin: 0, yMax: 19 },
-  { name: "Eastern Cliffs", xMin: 60, xMax: 79, yMin: 0, yMax: 19 },
-  { name: "Whispering Meadow", xMin: 0, xMax: 19, yMin: 20, yMax: 39 },
-  { name: "Hearthstone Valley", xMin: 20, xMax: 39, yMin: 20, yMax: 39 },
-  { name: "Granite Pass", xMin: 40, xMax: 59, yMin: 20, yMax: 39 },
-  { name: "Duskwood Edge", xMin: 60, xMax: 79, yMin: 20, yMax: 39 },
-  { name: "Sunlit Grove", xMin: 0, xMax: 19, yMin: 40, yMax: 59 },
-  { name: "Clearwater Basin", xMin: 20, xMax: 39, yMin: 40, yMax: 59 },
-  { name: "Stonehearth Plateau", xMin: 40, xMax: 59, yMin: 40, yMax: 59 },
-  { name: "Windbreak Ridge", xMin: 60, xMax: 79, yMin: 40, yMax: 59 },
-  { name: "Ferndale Lowlands", xMin: 0, xMax: 19, yMin: 60, yMax: 79 },
-  { name: "Riverbend Crossing", xMin: 20, xMax: 39, yMin: 60, yMax: 79 },
-  { name: "Ashfall Quarry", xMin: 40, xMax: 59, yMin: 60, yMax: 79 },
-  { name: "Farwatch Outpost", xMin: 60, xMax: 79, yMin: 60, yMax: 79 },
+  { name: "Northshore Beach", xMin: 0, xMax: 12, yMin: 0, yMax: 12 },
+  { name: "Pine Hollow", xMin: 13, xMax: 24, yMin: 0, yMax: 12 },
+  { name: "Iron Summit", xMin: 25, xMax: 37, yMin: 0, yMax: 12 },
+  { name: "Eastern Cliffs", xMin: 38, xMax: 49, yMin: 0, yMax: 12 },
+  { name: "Whispering Meadow", xMin: 0, xMax: 12, yMin: 13, yMax: 24 },
+  { name: "Hearthstone Valley", xMin: 13, xMax: 24, yMin: 13, yMax: 24 },
+  { name: "Granite Pass", xMin: 25, xMax: 37, yMin: 13, yMax: 24 },
+  { name: "Duskwood Edge", xMin: 38, xMax: 49, yMin: 13, yMax: 24 },
+  { name: "Sunlit Grove", xMin: 0, xMax: 12, yMin: 25, yMax: 37 },
+  { name: "Clearwater Basin", xMin: 13, xMax: 24, yMin: 25, yMax: 37 },
+  { name: "Stonehearth Plateau", xMin: 25, xMax: 37, yMin: 25, yMax: 37 },
+  { name: "Windbreak Ridge", xMin: 38, xMax: 49, yMin: 25, yMax: 37 },
+  { name: "Ferndale Lowlands", xMin: 0, xMax: 12, yMin: 38, yMax: 49 },
+  { name: "Riverbend Crossing", xMin: 13, xMax: 24, yMin: 38, yMax: 49 },
+  { name: "Ashfall Quarry", xMin: 25, xMax: 37, yMin: 38, yMax: 49 },
+  { name: "Farwatch Outpost", xMin: 38, xMax: 49, yMin: 38, yMax: 49 },
 ] as const;
 
 export function getRegionName(x: number, y: number): string {
