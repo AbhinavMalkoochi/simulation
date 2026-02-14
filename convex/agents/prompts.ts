@@ -259,6 +259,12 @@ interface SettlementInfo {
   buildings: Array<{ type: string }>;
 }
 
+type Belief = {
+  category: string;
+  content: string;
+  confidence: number;
+};
+
 interface BuildPromptArgs {
   agent: {
     name: string;
@@ -288,6 +294,7 @@ interface BuildPromptArgs {
   storehouseInventory: InventoryItem[];
   reputations: Array<{ name: string; score: number }>;
   daySummaries: Array<{ content: string; day?: number }>;
+  beliefs: Belief[];
   settlements: SettlementInfo[];
   timeOfDay: number;
   weather: string;
@@ -313,6 +320,7 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
     storehouseInventory,
     reputations,
     daySummaries,
+    beliefs,
     settlements,
     timeOfDay,
     weather,
@@ -431,7 +439,10 @@ ${reputationLines ? `COMMUNITY STANDING:\n${reputationLines}\n` : ""}YOUR ALLIAN
 ${myAlliances.length > 0 ? myAlliances.map((a) => `- "${a.name}" (${a.memberIds.length} members)${a.rules.length > 0 ? ` Rules: ${a.rules.join("; ")}` : ""}`).join("\n") : "None."}
 ${pendingProposals.length > 0 ? `\nPENDING PROPOSALS TO VOTE ON:\n${pendingProposals.map((p) => `- [id: ${p._id}] "${p.content}" (in ${p.allianceName ?? "unknown alliance"})`).join("\n")}` : ""}
 ${pendingTrades.length > 0 ? `\nPENDING TRADE OFFERS:\n${pendingTrades.map((t) => `- ${t.initiatorName ?? "Someone"} offers ${t.offer.map((o) => `${o.quantity} ${o.itemType}`).join(", ")} for ${t.request.map((r) => `${r.quantity} ${r.itemType}`).join(", ")}`).join("\n")}` : ""}
-${convSection}${lifeHints}${daySummaries.length > 0 ? `PREVIOUS DAYS:\n${daySummaries.map((s) => `- ${s.content}`).join("\n")}\n` : ""}YOUR MEMORIES (most relevant first):
+${beliefs.length > 0 ? `YOUR BELIEFS AND VALUES:\n${beliefs.map((b) => {
+  const strength = b.confidence > 0.7 ? "strongly believe" : b.confidence > 0.4 ? "believe" : "think";
+  return `- You ${strength}: "${b.content}" [${b.category}]`;
+}).join("\n")}\nThese beliefs shape how you see the world. Share them in conversation, defend them, or let them evolve. Try to persuade others of your views.\n` : ""}${convSection}${lifeHints}${daySummaries.length > 0 ? `PREVIOUS DAYS:\n${daySummaries.map((s) => `- ${s.content}`).join("\n")}\n` : ""}YOUR MEMORIES (most relevant first):
 ${memoryLines || "No memories yet."}
 
 Decide what to do next. Be a person — think about your feelings, your relationships, your dreams. Then take action. Be concise and stay in character.`;
@@ -482,20 +493,33 @@ Keep your response natural (2-4 sentences). Be genuine to your personality.`;
 export function buildReflectionPrompt(
   agentName: string,
   memories: Memory[],
+  existingBeliefs: Belief[] = [],
 ): string {
   const lines = memories.map((m) => `- [${m.type}] ${m.content}`).join("\n");
+  const beliefLines = existingBeliefs.length > 0
+    ? `\nYOUR CURRENT BELIEFS:\n${existingBeliefs.map((b) => `- [${b.category}] "${b.content}" (confidence: ${(b.confidence * 100).toFixed(0)}%)`).join("\n")}\n`
+    : "";
 
-  return `You are ${agentName}. Look back on your recent experiences and write 2-3 high-level reflections or insights. Each reflection should synthesize multiple memories into a broader understanding about yourself, others, or the world.
+  return `You are ${agentName}. Look back on your recent experiences and produce two outputs:
 
-Focus on your feelings about people, your evolving goals, lessons learned, and what you want to do differently. Don't reflect on logistics like movement or coordinates.
+1. REFLECTIONS: 2-3 high-level insights that synthesize multiple memories.
+2. BELIEFS: 0-2 new or updated beliefs that emerged from your experiences. These can be values ("Community matters more than individual gain"), opinions ("Kai is trustworthy"), philosophies ("True strength comes from cooperation"), or goals ("I want to found a trading company").
+
+Focus on feelings about people, evolving goals, lessons learned, and your view of the world. Don't reflect on logistics.
 
 RECENT EXPERIENCES:
 ${lines}
+${beliefLines}
+Format your response EXACTLY like this:
 
-Write each reflection as a single clear sentence starting with "I" — for example:
-"I notice that I enjoy spending time near the river."
-"I think Kai is someone I can trust."
-"I want to build something meaningful here, not just survive day to day."
+REFLECTIONS:
+- I notice that...
+- I think...
 
-Reflections:`;
+BELIEFS:
+- [value] Content of belief
+- [goal] Content of goal
+
+Use ONLY these categories: value, opinion, philosophy, goal.
+If no new beliefs emerged, write "BELIEFS: none"`;
 }

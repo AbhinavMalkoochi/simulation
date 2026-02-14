@@ -79,7 +79,7 @@ export const resetWorld = mutation({
     if (!checkAdmin(adminSecret ?? "")) return;
     const tables = ["agents", "memories", "relationships", "resources", "inventory",
       "buildings", "buildingInventory", "alliances", "proposals", "trades", "conversations",
-      "worldEvents", "reputation", "worldState"] as const;
+      "worldEvents", "reputation", "beliefs", "worldState"] as const;
 
     for (const table of tables) {
       const docs = await ctx.db.query(table).collect();

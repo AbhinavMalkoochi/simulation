@@ -226,6 +226,23 @@ export default defineSchema({
     .index("by_building", ["buildingId"])
     .index("by_building_item", ["buildingId", "itemType"]),
 
+  // Agent beliefs, values, and philosophical positions
+  beliefs: defineTable({
+    agentId: v.id("agents"),
+    category: v.union(
+      v.literal("value"),
+      v.literal("opinion"),
+      v.literal("philosophy"),
+      v.literal("goal"),
+    ),
+    content: v.string(),
+    confidence: v.number(),
+    formedTick: v.number(),
+    formedFrom: v.optional(v.string()),
+  })
+    .index("by_agent", ["agentId"])
+    .index("by_agent_category", ["agentId", "category"]),
+
   // Materialized reputation scores (Tier 3)
   reputation: defineTable({
     agentId: v.id("agents"),

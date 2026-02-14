@@ -18,7 +18,7 @@ export const ask = action({
     );
     if (!context || !context.world) return "Agent not found.";
 
-    const { agent, world, memories, nearbyAgents, nearbyResources, pendingConversations, inventory, nearbyBuildings, daySummaries, settlements } = context;
+    const { agent, world, memories, nearbyAgents, nearbyResources, pendingConversations, inventory, nearbyBuildings, daySummaries, settlements, beliefs } = context;
     const tick = world.tick;
     const TICKS_PER_DAY = 192;
     const day = Math.floor(tick / TICKS_PER_DAY) + 1;
@@ -40,6 +40,11 @@ export const ask = action({
       storehouseInventory: [],
       reputations: [],
       daySummaries: (daySummaries ?? []).map((s) => ({ content: s.content, day: s.day ?? undefined })),
+      beliefs: (beliefs ?? []).map((b) => ({
+        category: b.category,
+        content: b.content,
+        confidence: b.confidence,
+      })),
       settlements: (settlements ?? []).map((s) => ({
         name: s.name,
         region: s.region,

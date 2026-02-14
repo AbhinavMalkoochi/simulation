@@ -105,6 +105,11 @@ export const getThinkingContext = internalQuery({
       .order("desc")
       .take(3);
 
+    const beliefs = await ctx.db
+      .query("beliefs")
+      .withIndex("by_agent", (q) => q.eq("agentId", agentId))
+      .collect();
+
     const settlements = await detectSettlements(ctx);
 
     return {
@@ -113,6 +118,7 @@ export const getThinkingContext = internalQuery({
       storehouseInventory,
       reputations,
       daySummaries,
+      beliefs,
       settlements,
     };
   },

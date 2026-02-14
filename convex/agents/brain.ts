@@ -411,7 +411,7 @@ export const think = internalAction({
     const {
       agent, world, memories, nearbyAgents, pendingConversations, nearbyResources,
       inventory, nearbyBuildings, relationships, myAlliances, myPendingProposals, pendingTrades,
-      storehouseInventory, reputations, daySummaries, settlements,
+      storehouseInventory, reputations, daySummaries, beliefs, settlements,
     } = context;
     const tick = world.tick;
 
@@ -498,6 +498,11 @@ export const think = internalAction({
       storehouseInventory: storehouseInventory ?? [],
       reputations: reputationEntries,
       daySummaries: (daySummaries ?? []).map((s) => ({ content: s.content, day: s.day ?? undefined })),
+      beliefs: (beliefs ?? []).map((b) => ({
+        category: b.category,
+        content: b.content,
+        confidence: b.confidence,
+      })),
       settlements: (settlements ?? []).map((s) => ({
         name: s.name,
         region: s.region,
@@ -582,33 +587,65 @@ export const reflect = internalAction({
 
     if (recentMemories.length < 3) return;
 
+    const existingBeliefs = (context.beliefs ?? []).map((b) => ({
+      category: b.category,
+      content: b.content,
+      confidence: b.confidence,
+    }));
+
     try {
       const result = await generateText({
         model: openai("gpt-4o-mini"),
-        prompt: buildReflectionPrompt(agent.name, recentMemories),
+        prompt: buildReflectionPrompt(agent.name, recentMemories, existingBeliefs),
         stopWhen: stepCountIs(1),
       });
 
-      const reflections = result.text
-        .split("\n")
-        .map((line) => line.replace(/^[-*•\d.)\s]+/, "").trim())
-        .filter((line) => line.length > 10);
+      const text = result.text;
 
-      if (reflections.length > 0) {
+      // Parse reflections (lines between REFLECTIONS: and BELIEFS:)
+      const reflectionMatch = text.match(/REFLECTIONS?:\s*\n([\s\S]*?)(?=BELIEFS?:|$)/i);
+      const reflectionLines = reflectionMatch
+        ? reflectionMatch[1].split("\n").map((l) => l.replace(/^[-*•\d.)\s]+/, "").trim()).filter((l) => l.length > 10)
+        : text.split("\n").map((l) => l.replace(/^[-*•\d.)\s]+/, "").trim()).filter((l) => l.length > 10);
+
+      if (reflectionLines.length > 0) {
         await ctx.runMutation(internal.agents.actions.storeReflections, {
           agentId,
-          reflections: reflections.slice(0, 3),
-          tick,
-        });
-
-        await ctx.runMutation(internal.agents.memory.store, {
-          agentId,
-          type: "observation" as const,
-          content: "I spent time reflecting on my recent experiences.",
-          importance: 2,
+          reflections: reflectionLines.slice(0, 3),
           tick,
         });
       }
+
+      // Parse beliefs (lines after BELIEFS:)
+      const beliefMatch = text.match(/BELIEFS?:\s*\n([\s\S]*?)$/i);
+      if (beliefMatch && !beliefMatch[1].trim().toLowerCase().startsWith("none")) {
+        const beliefLines = beliefMatch[1].split("\n").filter((l) => l.trim().length > 5);
+        for (const line of beliefLines.slice(0, 2)) {
+          const catMatch = line.match(/\[(value|opinion|philosophy|goal)\]\s*(.+)/i);
+          if (catMatch) {
+            const category = catMatch[1].toLowerCase() as "value" | "opinion" | "philosophy" | "goal";
+            const content = catMatch[2].replace(/^[-*•\s]+/, "").trim();
+            if (content.length > 5) {
+              await ctx.runMutation(internal.agents.actions.storeBelief, {
+                agentId,
+                category,
+                content,
+                confidence: 0.5,
+                tick,
+                formedFrom: "reflection",
+              });
+            }
+          }
+        }
+      }
+
+      await ctx.runMutation(internal.agents.memory.store, {
+        agentId,
+        type: "observation" as const,
+        content: "I spent time reflecting on my recent experiences.",
+        importance: 2,
+        tick,
+      });
     } catch (error) {
       console.error(`Agent ${agent.name} reflection failed:`, error);
     }

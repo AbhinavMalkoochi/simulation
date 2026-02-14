@@ -32,3 +32,13 @@ export const getMemories = query({
       .take(limit ?? 20);
   },
 });
+
+export const getBeliefs = query({
+  args: { agentId: v.id("agents") },
+  handler: async (ctx, { agentId }) => {
+    return ctx.db
+      .query("beliefs")
+      .withIndex("by_agent", (q) => q.eq("agentId", agentId))
+      .collect();
+  },
+});

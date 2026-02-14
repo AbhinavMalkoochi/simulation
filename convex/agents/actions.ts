@@ -209,6 +209,55 @@ export const storeReflections = internalMutation({
   },
 });
 
+export const storeBelief = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    category: v.union(v.literal("value"), v.literal("opinion"), v.literal("philosophy"), v.literal("goal")),
+    content: v.string(),
+    confidence: v.number(),
+    tick: v.number(),
+    formedFrom: v.optional(v.string()),
+  },
+  handler: async (ctx, { agentId, category, content, confidence, tick, formedFrom }) => {
+    const existing = await ctx.db
+      .query("beliefs")
+      .withIndex("by_agent", (q) => q.eq("agentId", agentId))
+      .collect();
+
+    // Check for a similar belief to update rather than duplicate
+    const similar = existing.find(
+      (b) => b.category === category && b.content.toLowerCase().includes(content.slice(0, 30).toLowerCase()),
+    );
+
+    if (similar) {
+      await ctx.db.patch(similar._id, {
+        confidence: Math.min(1, (similar.confidence + confidence) / 2 + 0.05),
+        formedTick: tick,
+      });
+      return;
+    }
+
+    // Cap total beliefs per agent at 12 to keep prompts manageable
+    if (existing.length >= 12) {
+      const weakest = existing.reduce((min, b) => b.confidence < min.confidence ? b : min);
+      if (weakest.confidence < confidence) {
+        await ctx.db.delete(weakest._id);
+      } else {
+        return;
+      }
+    }
+
+    await ctx.db.insert("beliefs", {
+      agentId,
+      category,
+      content,
+      confidence: Math.max(0, Math.min(1, confidence)),
+      formedTick: tick,
+      formedFrom,
+    });
+  },
+});
+
 export const updateEmotion = internalMutation({
   args: {
     agentId: v.id("agents"),
