@@ -1,13 +1,8 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import type { FunctionReturnType } from "convex/server";
 
-interface DailySummary {
-  _id: string;
-  day: number;
-  eventCount: number;
-  content: string;
-  tick: number;
-}
+type DailySummary = NonNullable<FunctionReturnType<typeof api.analytics.dailySummary.getDailySummaries>>[number];
 
 function parseSummary(content: string): { headline: string; body: string } {
   const headlineMatch = content.match(/^HEADLINE:\s*(.+?)(?:\n|---)/);
@@ -42,7 +37,7 @@ function DaySummaryCard({ summary }: { summary: DailySummary }) {
 }
 
 export function Newspaper() {
-  const dailySummaries = useQuery(api.analytics.dailySummary.getDailySummaries) as DailySummary[] | undefined;
+  const dailySummaries = useQuery(api.analytics.dailySummary.getDailySummaries);
 
   if (!dailySummaries || dailySummaries.length === 0) {
     return (

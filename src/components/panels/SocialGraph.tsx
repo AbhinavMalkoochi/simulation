@@ -165,7 +165,7 @@ export function SocialGraph({ agents, relationships, alliances }: SocialGraphPro
     tick();
 
     return () => cancelAnimationFrame(frameRef.current);
-  }, [agents, relationships]);
+  }, [agents, relationships, alliances]);
 
   return (
     <div className="flex flex-col gap-3">

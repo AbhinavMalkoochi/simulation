@@ -9,13 +9,13 @@ import { Newspaper } from "./Newspaper";
 import { GodMode } from "./GodMode";
 import { WorldOverview } from "./WorldOverview";
 import { AgentAvatar } from "../ui/AgentAvatar";
-import type { AgentDoc, WorldEvent } from "../../types";
+import type { AgentDoc, WorldEvent, WorldStateDoc } from "../../types";
 
 interface SidebarProps {
   selectedAgent: AgentDoc | null;
   agents: AgentDoc[];
   events: WorldEvent[];
-  worldState: { tick: number; timeOfDay: number; weather: string; season: string; paused: boolean } | null;
+  worldState: WorldStateDoc | null;
   buildingCount: number;
   allianceCount: number;
   onAgentSelect: (agentId: string | null) => void;

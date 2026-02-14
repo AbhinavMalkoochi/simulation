@@ -2,6 +2,7 @@ import type { Doc } from "../convex/_generated/dataModel";
 import { AGENT_COLORS } from "../convex/lib/constants";
 
 export type AgentDoc = Doc<"agents">;
+export type WorldStateDoc = Doc<"worldState">;
 export type AgentStatus = "idle" | "moving" | "talking" | "working" | "sleeping" | "exploring";
 export type ResourceType = "wood" | "stone" | "food" | "metal" | "herbs";
 export type BuildingType = "shelter" | "workshop" | "market" | "meetingHall" | "farm" | "storehouse";

@@ -108,13 +108,7 @@ export function App() {
             selectedAgent={selectedAgent}
             agents={agents ?? []}
             events={events ?? []}
-            worldState={worldState ? {
-              tick: worldState.tick,
-              timeOfDay: worldState.timeOfDay,
-              weather: worldState.weather,
-              season: worldState.season,
-              paused: worldState.paused,
-            } : null}
+            worldState={worldState}
             buildingCount={buildings?.length ?? 0}
             allianceCount={alliances?.length ?? 0}
             onAgentSelect={setSelectedAgentId}

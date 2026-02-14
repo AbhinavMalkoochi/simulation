@@ -58,8 +58,10 @@ export function ActivityFeed({ events, visible, hidden, onToggle }: ActivityFeed
     }
   }, [recentEvents, visible, hidden]);
 
-  if (!visible || hidden) {
-    return visible ? (
+  if (!visible) return null;
+
+  if (hidden) {
+    return (
       <button
         onClick={onToggle}
         className="absolute bottom-4 left-4 z-10 flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-xl rounded-full text-xs font-medium text-neutral-600 hover:text-neutral-800 hover:bg-white/90 transition-all cursor-pointer shadow-md shadow-black/8 border border-white/50"
@@ -70,7 +72,7 @@ export function ActivityFeed({ events, visible, hidden, onToggle }: ActivityFeed
         </svg>
         Events
       </button>
-    ) : null;
+    );
   }
 
   if (recentEvents.length === 0) return null;
