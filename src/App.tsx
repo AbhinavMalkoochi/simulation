@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { WorldCanvas } from "./components/world/WorldCanvas";
@@ -22,12 +22,12 @@ export function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activityFeedHidden, setActivityFeedHidden] = useState(false);
 
-  const directorAgentId = (() => {
+  const directorAgentId = useMemo(() => {
     if (!directorMode || !agents?.length || !worldState) return null;
     const active = agents.filter((a) => a.status !== "idle" && a.status !== "sleeping");
     const pool = active.length > 0 ? active : agents;
     return pool[worldState.tick % pool.length]?._id ?? null;
-  })();
+  }, [directorMode, agents, worldState]);
 
   const effectiveAgentId = directorMode ? directorAgentId : selectedAgentId;
 
@@ -58,6 +58,11 @@ export function App() {
     );
   }
 
+  const allianceData = useMemo(
+    () => (alliances ?? []).map((a) => ({ _id: a._id, name: a.name, memberIds: a.memberIds.map(String) })),
+    [alliances],
+  );
+
   const selectedAgent = agents?.find((a) => a._id === effectiveAgentId) ?? null;
 
   return (
@@ -81,7 +86,7 @@ export function App() {
             resources={resources ?? []}
             buildings={buildings ?? []}
             events={events ?? []}
-            alliances={(alliances ?? []).map((a) => ({ _id: a._id, name: a.name, memberIds: a.memberIds.map(String) }))}
+            alliances={allianceData}
             mapSeed={worldState.mapSeed}
             mapWidth={worldState.mapWidth}
             mapHeight={worldState.mapHeight}

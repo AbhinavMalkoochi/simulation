@@ -1,6 +1,7 @@
 import { Application, Container, Graphics, Text, TextStyle } from "pixi.js";
 import { TILE_COLORS, AGENT_COLORS, TILE } from "../../../convex/lib/constants";
 import { generateMap } from "../../../convex/lib/mapgen";
+import { SKIN_COLORS, HAIR_COLORS } from "../../constants";
 import type {
   AgentSpriteData,
   ResourceData,
@@ -105,14 +106,6 @@ const BUILDING_COLORS: Record<string, number> = {
   farm: 0x65a30d,
   storehouse: 0x78716c,
 };
-
-const SKIN_COLORS = [
-  0xf5d0a9, 0xd4a76a, 0xc68642, 0x8d5524, 0xffdbb4, 0xe8b88a,
-];
-const HAIR_COLORS = [
-  0x2c1b0e, 0x5c3317, 0xa0522d, 0xffd700, 0xc04000, 0x1a1a2e, 0xe8e8e8,
-  0x4a2c2a,
-];
 
 // --- Seeded random for deterministic tile details ---
 function seededHash(x: number, y: number, seed: number): number {
@@ -361,10 +354,6 @@ export class GameWorld {
     }
   }
 
-  updateWeather(weather: string): void {
-    if (!this._initialized) return;
-    void weather;
-  }
 
   private processedEventIds = new Set<string>();
 

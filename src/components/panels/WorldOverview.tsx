@@ -1,15 +1,8 @@
 import { agentColorHex } from "../../types";
+import { formatTime12h } from "../../constants";
 import type { AgentDoc } from "../../types";
 
 const TICKS_PER_DAY = 192;
-
-function formatTime(timeOfDay: number): string {
-  const hours = Math.floor(timeOfDay);
-  const minutes = Math.floor((timeOfDay - hours) * 60);
-  const period = hours >= 12 ? "PM" : "AM";
-  const h12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-  return `${h12}:${String(minutes).padStart(2, "0")} ${period}`;
-}
 
 function Stat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
@@ -64,7 +57,7 @@ export function WorldOverview({
           )}
         </div>
         <p className="text-sm text-neutral-500 mt-0.5 capitalize">
-          {season} &middot; {formatTime(timeOfDay)} &middot; {weather}
+          {season} &middot; {formatTime12h(timeOfDay)} &middot; {weather}
         </p>
       </div>
 

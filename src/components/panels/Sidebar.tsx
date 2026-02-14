@@ -9,6 +9,7 @@ import { Newspaper } from "./Newspaper";
 import { GodMode } from "./GodMode";
 import { WorldOverview } from "./WorldOverview";
 import { AgentAvatar } from "../ui/AgentAvatar";
+import { STATUS_LABEL } from "../../constants";
 import type { AgentDoc, WorldEvent, WorldStateDoc } from "../../types";
 
 interface SidebarProps {
@@ -32,15 +33,6 @@ const TABS = [
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
-
-const STATUS_LABEL: Record<string, string> = {
-  idle: "Idle",
-  moving: "Moving",
-  talking: "Talking",
-  working: "Working",
-  sleeping: "Sleeping",
-  exploring: "Exploring",
-};
 
 export function Sidebar({ selectedAgent, agents, events, worldState, buildingCount, allianceCount, onAgentSelect }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<TabId>("world");

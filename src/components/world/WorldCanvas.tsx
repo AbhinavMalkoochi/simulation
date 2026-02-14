@@ -72,7 +72,6 @@ export function WorldCanvas({
     w.updateResources(resources);
     w.updateBuildings(buildings);
     w.updateTimeOfDay(timeOfDay);
-    w.updateWeather(weather);
     w.processEvents(events);
     w.updateTerritories(agents, buildings, alliances);
   }, [agents, resources, buildings, events, alliances, timeOfDay, weather]);

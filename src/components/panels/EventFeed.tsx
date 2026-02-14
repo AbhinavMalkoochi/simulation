@@ -1,36 +1,6 @@
 import { useRef, useEffect, useState } from "react";
-import { MessageSquare, Handshake, Sword, Vote, Building2, Sprout, Hammer, Gift, Zap, Globe, AlertCircle, Flag } from "lucide-react";
+import { EVENT_TYPE_ICON, EVENT_TYPE_COLOR } from "../../constants";
 import type { WorldEvent } from "../../types";
-
-const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
-  conversation: MessageSquare,
-  trade: Handshake,
-  alliance: Sword,
-  governance: Vote,
-  build: Building2,
-  gather: Sprout,
-  craft: Hammer,
-  gift: Gift,
-  god_action: Zap,
-  world_created: Globe,
-  conflict: AlertCircle,
-  territory: Flag,
-};
-
-const TYPE_DOT: Record<string, string> = {
-  conversation: "bg-blue-500",
-  trade: "bg-amber-500",
-  alliance: "bg-purple-500",
-  governance: "bg-violet-500",
-  build: "bg-orange-500",
-  gather: "bg-emerald-500",
-  craft: "bg-cyan-500",
-  gift: "bg-rose-500",
-  god_action: "bg-yellow-500",
-  world_created: "bg-emerald-500",
-  conflict: "bg-red-500",
-  territory: "bg-cyan-600",
-};
 
 const FILTER_OPTIONS = [
   { id: "all", label: "All" },
@@ -77,10 +47,10 @@ export function EventFeed({ events }: { events: WorldEvent[] }) {
           <p className="text-xs text-neutral-400 italic py-2">No events match this filter</p>
         )}
         {filtered.map((event) => {
-          const IconComponent = TYPE_ICON[event.type];
+          const IconComponent = EVENT_TYPE_ICON[event.type];
           return (
             <div key={event._id} className="flex items-start gap-2 py-0.5">
-              <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${TYPE_DOT[event.type] ?? "bg-neutral-400"}`} />
+              <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${EVENT_TYPE_COLOR[event.type] ?? "bg-neutral-400"}`} />
               <div className="flex items-start gap-1.5 flex-1 min-w-0">
                 {IconComponent && (
                   <IconComponent className="w-3 h-3 mt-0.5 shrink-0 text-neutral-500" />

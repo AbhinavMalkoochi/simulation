@@ -1,12 +1,5 @@
 import { AGENT_COLORS } from "../../../convex/lib/constants";
-
-const SKIN_COLORS = [
-  0xf5d0a9, 0xd4a76a, 0xc68642, 0x8d5524, 0xffdbb4, 0xe8b88a,
-];
-const HAIR_COLORS = [
-  0x2c1b0e, 0x5c3317, 0xa0522d, 0xffd700, 0xc04000, 0x1a1a2e, 0xe8e8e8,
-  0x4a2c2a,
-];
+import { SKIN_COLORS, HAIR_COLORS } from "../../constants";
 
 function hexToRgb(hex: number): string {
   const r = (hex >> 16) & 0xff;

@@ -2,6 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { InterviewChat } from "./InterviewChat";
 import { AgentAvatar } from "../ui/AgentAvatar";
+import { STATUS_LABEL } from "../../constants";
 import type { AgentDoc } from "../../types";
 
 const TRAIT_LABELS: Record<string, string> = {
@@ -10,15 +11,6 @@ const TRAIT_LABELS: Record<string, string> = {
   extraversion: "Extra",
   agreeableness: "Agree",
   neuroticism: "Neuro",
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  idle: "Idle",
-  moving: "Moving",
-  talking: "Talking",
-  working: "Working",
-  sleeping: "Sleeping",
-  exploring: "Exploring",
 };
 
 function Bar({ label, value, accent = false }: { label: string; value: number; accent?: boolean }) {

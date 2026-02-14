@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { MessageSquare, Sprout, Hammer, Building2, Handshake, Gift, Sword, Vote, Zap, AlertCircle, Flag } from "lucide-react";
+import { EVENT_TYPE_ICON, EVENT_TYPE_COLOR } from "../../constants";
 import type { WorldEvent } from "../../types";
 
 interface ActivityFeedProps {
@@ -10,34 +10,6 @@ interface ActivityFeedProps {
 }
 
 const MAX_EVENTS = 12;
-
-const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
-  conversation: MessageSquare,
-  gather: Sprout,
-  craft: Hammer,
-  build: Building2,
-  trade: Handshake,
-  gift: Gift,
-  alliance: Sword,
-  governance: Vote,
-  god_action: Zap,
-  conflict: AlertCircle,
-  territory: Flag,
-};
-
-const TYPE_COLOR: Record<string, string> = {
-  conversation: "bg-blue-500",
-  gather: "bg-emerald-500",
-  craft: "bg-amber-500",
-  build: "bg-orange-500",
-  trade: "bg-yellow-500",
-  gift: "bg-rose-500",
-  alliance: "bg-purple-500",
-  governance: "bg-violet-500",
-  god_action: "bg-neutral-500",
-  conflict: "bg-red-500",
-  territory: "bg-cyan-500",
-};
 
 function truncateEvent(description: string, maxLen = 70): string {
   return description.length > maxLen
@@ -99,10 +71,10 @@ export function ActivityFeed({ events, visible, hidden, onToggle }: ActivityFeed
       {/* Scrollable list */}
       <div ref={scrollRef} className="overflow-y-auto flex-1 py-1.5">
         {recentEvents.map((event) => {
-          const IconComponent = TYPE_ICON[event.type];
+          const IconComponent = EVENT_TYPE_ICON[event.type];
           return (
             <div key={event._id} className="flex items-start gap-2.5 py-1 px-3.5 hover:bg-neutral-50/50 transition-colors">
-              <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${TYPE_COLOR[event.type] ?? "bg-neutral-400"}`} />
+              <div className={`w-2 h-2 rounded-full mt-1 shrink-0 ${EVENT_TYPE_COLOR[event.type] ?? "bg-neutral-400"}`} />
               <div className="flex-1 min-w-0 flex items-start gap-1.5">
                 {IconComponent && (
                   <IconComponent className="w-3 h-3 mt-0.5 shrink-0 text-neutral-500" />
