@@ -1,5 +1,5 @@
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { RESOURCES, BUILDING_DECAY_RATE, BUILDING_BONUS } from "../lib/constants";
+import { RESOURCES, BUILDING_DECAY_RATE, BUILDING_BONUS, getRegionName } from "../lib/constants";
 
 /** Check if a building of the given type is within bonus range of a position */
 export async function hasBuildingBonus(
@@ -106,4 +106,67 @@ export async function decayBuildings(ctx: MutationCtx): Promise<void> {
       });
     }
   }
+}
+
+// --- Settlement Detection ---
+
+export interface Settlement {
+  name: string;
+  region: string;
+  buildings: Array<{ type: string; posX: number; posY: number }>;
+  centerX: number;
+  centerY: number;
+}
+
+const SETTLEMENT_CLUSTER_RADIUS = 8;
+
+export async function detectSettlements(ctx: QueryCtx): Promise<Settlement[]> {
+  const buildings = await ctx.db.query("buildings").collect();
+  const active = buildings.filter((b) => b.condition > 0);
+  if (active.length < 3) return [];
+
+  const visited = new Set<string>();
+  const settlements: Settlement[] = [];
+
+  for (const building of active) {
+    const key = `${building.posX},${building.posY}`;
+    if (visited.has(key)) continue;
+
+    // BFS to find cluster
+    const cluster = [building];
+    visited.add(key);
+    const queue = [building];
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      for (const other of active) {
+        const otherKey = `${other.posX},${other.posY}`;
+        if (visited.has(otherKey)) continue;
+        if (
+          Math.abs(other.posX - current.posX) <= SETTLEMENT_CLUSTER_RADIUS &&
+          Math.abs(other.posY - current.posY) <= SETTLEMENT_CLUSTER_RADIUS
+        ) {
+          visited.add(otherKey);
+          cluster.push(other);
+          queue.push(other);
+        }
+      }
+    }
+
+    if (cluster.length >= 3) {
+      const centerX = Math.round(cluster.reduce((s, b) => s + b.posX, 0) / cluster.length);
+      const centerY = Math.round(cluster.reduce((s, b) => s + b.posY, 0) / cluster.length);
+      const region = getRegionName(centerX, centerY);
+
+      settlements.push({
+        name: `${region} Settlement`,
+        region,
+        buildings: cluster.map((b) => ({ type: b.type, posX: b.posX, posY: b.posY })),
+        centerX,
+        centerY,
+      });
+    }
+  }
+
+  return settlements;
 }

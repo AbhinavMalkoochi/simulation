@@ -411,7 +411,7 @@ export const think = internalAction({
     const {
       agent, world, memories, nearbyAgents, pendingConversations, nearbyResources,
       inventory, nearbyBuildings, relationships, myAlliances, myPendingProposals, pendingTrades,
-      storehouseInventory, reputations, daySummaries,
+      storehouseInventory, reputations, daySummaries, settlements,
     } = context;
     const tick = world.tick;
 
@@ -497,6 +497,11 @@ export const think = internalAction({
       storehouseInventory: storehouseInventory ?? [],
       reputations: reputationEntries,
       daySummaries: (daySummaries ?? []).map((s) => ({ content: s.content, day: s.day ?? undefined })),
+      settlements: (settlements ?? []).map((s) => ({
+        name: s.name,
+        region: s.region,
+        buildings: s.buildings.map((b) => ({ type: b.type })),
+      })),
       timeOfDay: world.timeOfDay,
       weather: world.weather,
       season: world.season,

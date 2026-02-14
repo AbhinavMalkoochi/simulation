@@ -253,6 +253,12 @@ function buildLifeHints(
 
 // --- Main System Prompt ---
 
+interface SettlementInfo {
+  name: string;
+  region: string;
+  buildings: Array<{ type: string }>;
+}
+
 interface BuildPromptArgs {
   agent: {
     name: string;
@@ -282,6 +288,7 @@ interface BuildPromptArgs {
   storehouseInventory: InventoryItem[];
   reputations: Array<{ name: string; score: number }>;
   daySummaries: Array<{ content: string; day?: number }>;
+  settlements: SettlementInfo[];
   timeOfDay: number;
   weather: string;
   season: string;
@@ -306,6 +313,7 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
     storehouseInventory,
     reputations,
     daySummaries,
+    settlements,
     timeOfDay,
     weather,
     season,
@@ -412,8 +420,7 @@ ${resourceLines}
 
 BUILDINGS NEARBY:
 ${buildingLines}
-
-YOUR INVENTORY:
+${settlements.length > 0 ? `\nSETTLEMENTS:\n${settlements.map((s) => `- ${s.name}: ${s.buildings.length} buildings (${[...new Set(s.buildings.map((b) => b.type))].join(", ")})`).join("\n")}\n` : ""}YOUR INVENTORY:
 ${inventory.length > 0 ? inventory.map((i) => `- ${Math.round(i.quantity)} ${i.itemType}`).join("\n") : "Empty."}
 ${storehouseInventory.length > 0 ? `\nALLIANCE STOREHOUSE:\n${storehouseInventory.map((i) => `- ${Math.round(i.quantity)} ${i.itemType}`).join("\n")}` : ""}
 

@@ -1,5 +1,6 @@
 import { internalQuery } from "../_generated/server";
 import { v } from "convex/values";
+import { detectSettlements } from "../world/systems";
 
 export const getThinkingContext = internalQuery({
   args: { agentId: v.id("agents") },
@@ -96,7 +97,6 @@ export const getThinkingContext = internalQuery({
       }
     }
 
-    // Fetch recent day summaries for cross-day context
     const daySummaries = await ctx.db
       .query("memories")
       .withIndex("by_agent_type", (q) =>
@@ -105,12 +105,15 @@ export const getThinkingContext = internalQuery({
       .order("desc")
       .take(3);
 
+    const settlements = await detectSettlements(ctx);
+
     return {
       agent, world, memories, nearbyAgents, pendingConversations, nearbyResources,
       inventory, nearbyBuildings, relationships, myAlliances, myPendingProposals, pendingTrades,
       storehouseInventory,
       reputations,
       daySummaries,
+      settlements,
     };
   },
 });
