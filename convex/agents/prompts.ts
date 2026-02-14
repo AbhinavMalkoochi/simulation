@@ -6,43 +6,70 @@ type Personality = {
   neuroticism: number;
 };
 
-type Memory = { content: string; tick: number; type: string; importance: number };
-type NearbyAgent = { name: string; position: { x: number; y: number }; status: string };
-type NearbyResource = { type: string; tileX: number; tileY: number; quantity: number };
+type Memory = {
+  content: string;
+  tick: number;
+  type: string;
+  importance: number;
+};
+type NearbyAgent = {
+  name: string;
+  position: { x: number; y: number };
+  status: string;
+};
+type NearbyResource = {
+  type: string;
+  tileX: number;
+  tileY: number;
+  quantity: number;
+};
 type Conversation = {
   messages: Array<{ speakerId: string; content: string; tick: number }>;
   participantIds: string[];
 };
 
-const TRAIT_DESC: Record<string, { high: string; midHigh: string; midLow: string; low: string }> = {
+const TRAIT_DESC: Record<
+  string,
+  { high: string; midHigh: string; midLow: string; low: string }
+> = {
   openness: {
     high: "You are deeply curious, imaginative, and drawn to new experiences. You love exploring ideas and the unknown.",
-    midHigh: "You appreciate novelty and enjoy trying new things, though you balance it with practicality.",
-    midLow: "You lean toward the familiar and prefer tested approaches, but can adapt when needed.",
+    midHigh:
+      "You appreciate novelty and enjoy trying new things, though you balance it with practicality.",
+    midLow:
+      "You lean toward the familiar and prefer tested approaches, but can adapt when needed.",
     low: "You prefer routine, tradition, and practical approaches. You trust what has been proven to work.",
   },
   conscientiousness: {
     high: "You are highly organized, disciplined, and follow through on every commitment without fail.",
-    midHigh: "You are generally reliable and structured, though you allow yourself flexibility when it makes sense.",
-    midLow: "You tend toward spontaneity and flexibility, sometimes at the cost of follow-through.",
+    midHigh:
+      "You are generally reliable and structured, though you allow yourself flexibility when it makes sense.",
+    midLow:
+      "You tend toward spontaneity and flexibility, sometimes at the cost of follow-through.",
     low: "You are spontaneous and go with the flow. Structure feels constraining to you.",
   },
   extraversion: {
     high: "You are energized by social interaction, love being around others, and naturally take the lead in groups.",
-    midHigh: "You enjoy socializing and connecting with others, though you also value some quiet time.",
-    midLow: "You are somewhat reserved, preferring smaller groups or one-on-one interactions over crowds.",
+    midHigh:
+      "You enjoy socializing and connecting with others, though you also value some quiet time.",
+    midLow:
+      "You are somewhat reserved, preferring smaller groups or one-on-one interactions over crowds.",
     low: "You prefer solitude and quiet reflection. Being around too many people drains you.",
   },
   agreeableness: {
     high: "You are deeply compassionate, cooperative, and always prioritize harmony and helping others.",
-    midHigh: "You are generally warm and cooperative, willing to compromise to keep the peace.",
-    midLow: "You can be skeptical of others' motives and don't shy away from disagreement when needed.",
+    midHigh:
+      "You are generally warm and cooperative, willing to compromise to keep the peace.",
+    midLow:
+      "You can be skeptical of others' motives and don't shy away from disagreement when needed.",
     low: "You are blunt, competitive, and speak your mind freely regardless of how it lands.",
   },
   neuroticism: {
     high: "You experience emotions intensely — worry, anxiety, and frustration hit you hard.",
-    midHigh: "You are somewhat sensitive to stress and can get anxious when things feel uncertain.",
-    midLow: "You handle most stress well, though big setbacks can shake your composure.",
+    midHigh:
+      "You are somewhat sensitive to stress and can get anxious when things feel uncertain.",
+    midLow:
+      "You handle most stress well, though big setbacks can shake your composure.",
     low: "You are emotionally steady and calm under pressure. Very little rattles you.",
   },
 };
@@ -85,16 +112,26 @@ function formatPlanSection(agent: {
     });
     return `- ACTIVE PLAN (step ${agent.planStep + 1}/${agent.planSteps.length}):\n${lines.join("\n")}`;
   }
-  return agent.currentPlan ? `- Current plan: ${agent.currentPlan}` : "- No current plan.";
+  return agent.currentPlan
+    ? `- Current plan: ${agent.currentPlan}`
+    : "- No current plan.";
 }
 
 type InventoryItem = { itemType: string; quantity: number };
 type NearbyBuilding = { type: string; posX: number; posY: number };
 type Relationship = { targetAgentId: string; trust: number; affinity: number };
-type LastSighting = { name: string; position: { x: number; y: number }; ticksAgo: number };
+type LastSighting = {
+  name: string;
+  position: { x: number; y: number };
+  ticksAgo: number;
+};
 type Alliance = { name: string; memberIds: string[]; rules: string[] };
 type PendingProposal = { _id: string; content: string; allianceName?: string };
-type PendingTrade = { offer: Array<{ itemType: string; quantity: number }>; request: Array<{ itemType: string; quantity: number }>; initiatorName?: string };
+type PendingTrade = {
+  offer: Array<{ itemType: string; quantity: number }>;
+  request: Array<{ itemType: string; quantity: number }>;
+  initiatorName?: string;
+};
 
 interface BuildPromptArgs {
   agent: {
@@ -133,64 +170,113 @@ interface BuildPromptArgs {
 }
 
 /** Build survival urgency text based on agent state */
-function buildUrgencySection(energy: number, inventory: InventoryItem[], nearbyBuildings: NearbyBuilding[]): string {
+function buildUrgencySection(
+  energy: number,
+  inventory: InventoryItem[],
+  nearbyBuildings: NearbyBuilding[],
+): string {
   const lines: string[] = [];
 
   if (energy < 15) {
-    lines.push("[CRITICAL] You are starving! Eat food, craft a meal, or rest IMMEDIATELY. You will collapse soon.");
+    lines.push(
+      "[CRITICAL] You are starving! Eat food, craft a meal, or rest IMMEDIATELY. You will collapse soon.",
+    );
   } else if (energy < 30) {
-    lines.push("[WARNING] Your energy is dangerously low. Find food, eat, or rest before doing anything else.");
+    lines.push(
+      "[WARNING] Your energy is dangerously low. Find food, eat, or rest before doing anything else.",
+    );
   } else if (energy < 50) {
     lines.push("Your energy is getting low. Consider eating or resting soon.");
   }
 
-  const hasFood = inventory.some((i) => i.itemType === "food" || i.itemType === "meal");
+  const hasFood = inventory.some(
+    (i) => i.itemType === "food" || i.itemType === "meal",
+  );
   const hasShelter = nearbyBuildings.some((b) => b.type === "shelter");
 
   if (!hasFood && energy < 60) {
-    lines.push("You have no food in your inventory. Gathering food should be a high priority.");
+    lines.push(
+      "You have no food in your inventory. Gathering food should be a high priority.",
+    );
   }
   if (!hasShelter) {
-    lines.push("You have no shelter nearby. Building one would give you better rest and safety.");
+    lines.push(
+      "You have no shelter nearby. Building one would give you better rest and safety.",
+    );
   }
 
   return lines.length > 0 ? `\nURGENT NEEDS:\n${lines.join("\n")}\n` : "";
 }
 
 /** Build progression hints based on what the agent has/hasn't done */
-function buildProgressionHints(inventory: InventoryItem[], nearbyBuildings: NearbyBuilding[], myAlliances: Alliance[], day: number): string {
+function buildProgressionHints(
+  inventory: InventoryItem[],
+  nearbyBuildings: NearbyBuilding[],
+  myAlliances: Alliance[],
+  day: number,
+): string {
   const hints: string[] = [];
   const itemMap = new Map(inventory.map((i) => [i.itemType, i.quantity]));
   const totalItems = inventory.reduce((sum, i) => sum + i.quantity, 0);
 
   // Early game: no tools or shelter yet
   if (!itemMap.has("stone_tools") && !itemMap.has("metal_tools") && day <= 3) {
-    hints.push("Crafting tools (stone_tools: 2 stone + 1 wood) would make your gathering more efficient.");
+    hints.push(
+      "Crafting tools (stone_tools: 2 stone + 1 wood) would make your gathering more efficient.",
+    );
   }
 
   // Has lots of raw materials but hasn't built anything
   if ((itemMap.get("wood") ?? 0) >= 5 && nearbyBuildings.length === 0) {
-    hints.push("You have enough wood to start building a shelter (5 wood + 3 stone). A home base would help you and others.");
+    hints.push(
+      "You have enough wood to start building a shelter (5 wood + 3 stone). A home base would help you and others.",
+    );
   }
 
   // Has excess resources, could trade
   if (totalItems > 10 && myAlliances.length === 0 && day >= 2) {
-    hints.push("You've accumulated resources. Consider forming an alliance with trusted people or proposing trades.");
+    hints.push(
+      "You've accumulated resources. Consider forming an alliance with trusted people or proposing trades.",
+    );
   }
 
   // Mid-game: has shelter, should expand
-  if (nearbyBuildings.some((b) => b.type === "shelter") && !nearbyBuildings.some((b) => b.type === "farm") && day >= 3) {
-    hints.push("A farm (4 wood + 2 stone) would provide a steady food supply for your settlement.");
+  if (
+    nearbyBuildings.some((b) => b.type === "shelter") &&
+    !nearbyBuildings.some((b) => b.type === "farm") &&
+    day >= 3
+  ) {
+    hints.push(
+      "A farm (4 wood + 2 stone) would provide a steady food supply for your settlement.",
+    );
   }
 
-  return hints.length > 0 ? `\nTHINGS TO CONSIDER:\n${hints.map((h) => `- ${h}`).join("\n")}\n` : "";
+  return hints.length > 0
+    ? `\nTHINGS TO CONSIDER:\n${hints.map((h) => `- ${h}`).join("\n")}\n`
+    : "";
 }
 
 export function buildSystemPrompt(args: BuildPromptArgs): string {
   const {
-    agent, memories, nearbyAgents, nearbyResources, pendingConversations,
-    inventory, nearbyBuildings, relationships, myAlliances, pendingProposals, pendingTrades,
-    lastSightings, storehouseInventory, reputations, daySummaries, timeOfDay, weather, season, day,
+    agent,
+    memories,
+    nearbyAgents,
+    nearbyResources,
+    pendingConversations,
+    inventory,
+    nearbyBuildings,
+    relationships,
+    myAlliances,
+    pendingProposals,
+    pendingTrades,
+    lastSightings,
+    storehouseInventory,
+    reputations,
+    daySummaries,
+    timeOfDay,
+    weather,
+    season,
+    day,
   } = args;
 
   const personalityDesc = describePersonality(agent.personality);
@@ -201,25 +287,43 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
     .map((m) => `- [tick ${m.tick}, ${m.type}] ${m.content}`)
     .join("\n");
 
-  const nearbyAgentLines = nearbyAgents.length > 0
-    ? nearbyAgents.map((a) => `- ${a.name} at (${a.position.x}, ${a.position.y}) — ${a.status}`).join("\n")
-    : "Nobody nearby.";
+  const nearbyAgentLines =
+    nearbyAgents.length > 0
+      ? nearbyAgents
+          .map(
+            (a) =>
+              `- ${a.name} at (${a.position.x}, ${a.position.y}) — ${a.status}`,
+          )
+          .join("\n")
+      : "Nobody nearby.";
 
-  const resourceLines = nearbyResources.length > 0
-    ? nearbyResources.map((r) => `- ${r.type} at (${r.tileX}, ${r.tileY}) — ${r.quantity} available`).join("\n")
-    : "No visible resources nearby.";
+  const resourceLines =
+    nearbyResources.length > 0
+      ? nearbyResources
+          .map(
+            (r) =>
+              `- ${r.type} at (${r.tileX}, ${r.tileY}) — ${Math.round(r.quantity)} available`,
+          )
+          .join("\n")
+      : "No visible resources nearby.";
 
   const convLines = pendingConversations.flatMap((c) =>
     c.messages
       .filter((m) => m.speakerId !== agent._id)
-      .map((m) => `- Someone said: "${m.content}"`)
+      .map((m) => `- Someone said: "${m.content}"`),
   );
-  const convSection = convLines.length > 0
-    ? `\nSOMEONE SPOKE TO YOU:\n${convLines.join("\n")}\nIf someone spoke to you, reply briefly — but don't let conversation replace doing real work.\n`
-    : "";
+  const convSection =
+    convLines.length > 0
+      ? `\nSOMEONE SPOKE TO YOU:\n${convLines.join("\n")}\nIf someone spoke to you, reply briefly — but don't let conversation replace doing real work.\n`
+      : "";
 
   const urgency = buildUrgencySection(agent.energy, inventory, nearbyBuildings);
-  const progression = buildProgressionHints(inventory, nearbyBuildings, myAlliances, day);
+  const progression = buildProgressionHints(
+    inventory,
+    nearbyBuildings,
+    myAlliances,
+    day,
+  );
 
   return `You are ${agent.name}. You live in a shared wilderness world alongside other people. You are a real person with feelings, desires, and a unique way of seeing the world. Stay in character at all times.
 
@@ -275,10 +379,23 @@ ${storehouseInventory.length > 0 ? `\nALLIANCE STOREHOUSE (nearby):\n${storehous
 YOUR RELATIONSHIPS:
 ${relationships.length > 0 ? relationships.map((r) => `- ${r.targetAgentId}: trust ${r.trust.toFixed(2)}, affinity ${r.affinity.toFixed(2)}`).join("\n") : "No established relationships."}
 
-${reputations.length > 0 ? `COMMUNITY REPUTATION:\n${reputations.map((r) => {
-  const label = r.score > 0.3 ? "well-trusted" : r.score > 0 ? "neutral-positive" : r.score > -0.3 ? "neutral-negative" : "distrusted";
-  return `- ${r.name}: ${label} (${r.score.toFixed(2)})`;
-}).join("\n")}\n` : ""}YOUR ALLIANCES:
+${
+  reputations.length > 0
+    ? `COMMUNITY REPUTATION:\n${reputations
+        .map((r) => {
+          const label =
+            r.score > 0.3
+              ? "well-trusted"
+              : r.score > 0
+                ? "neutral-positive"
+                : r.score > -0.3
+                  ? "neutral-negative"
+                  : "distrusted";
+          return `- ${r.name}: ${label} (${r.score.toFixed(2)})`;
+        })
+        .join("\n")}\n`
+    : ""
+}YOUR ALLIANCES:
 ${myAlliances.length > 0 ? myAlliances.map((a) => `- "${a.name}" (${a.memberIds.length} members)${a.rules.length > 0 ? ` Rules: ${a.rules.join("; ")}` : ""}`).join("\n") : "None."}
 ${pendingProposals.length > 0 ? `\nPENDING PROPOSALS TO VOTE ON:\n${pendingProposals.map((p) => `- [id: ${p._id}] "${p.content}" (in ${p.allianceName ?? "unknown alliance"})`).join("\n")}` : ""}
 ${pendingTrades.length > 0 ? `\nPENDING TRADE OFFERS:\n${pendingTrades.map((t) => `- ${t.initiatorName ?? "Someone"} offers ${t.offer.map((o) => `${o.quantity} ${o.itemType}`).join(", ")} for ${t.request.map((r) => `${r.quantity} ${r.itemType}`).join(", ")}`).join("\n")}` : ""}
@@ -289,14 +406,22 @@ Decide what to do next. Prioritize survival and productivity. Take concrete acti
 }
 
 export function buildConversationPrompt(
-  agent: { name: string; backstory: string; personality: Personality; communicationStyle?: string; emotion: { valence: number; arousal: number } },
+  agent: {
+    name: string;
+    backstory: string;
+    personality: Personality;
+    communicationStyle?: string;
+    emotion: { valence: number; arousal: number };
+  },
   partnerName: string,
   messages: Array<{ speakerName: string; content: string }>,
   previousConversationSummary?: string,
 ): string {
   const personalityDesc = describePersonality(agent.personality);
   const mood = describeMood(agent.emotion.valence, agent.emotion.arousal);
-  const messageLines = messages.map((m) => `${m.speakerName}: "${m.content}"`).join("\n");
+  const messageLines = messages
+    .map((m) => `${m.speakerName}: "${m.content}"`)
+    .join("\n");
 
   return `You are ${agent.name}. ${agent.backstory}
 

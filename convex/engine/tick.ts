@@ -54,7 +54,7 @@ export const run = internalMutation({
           path: remaining.length > 0 ? remaining : undefined,
           targetPosition: remaining.length > 0 ? agent.targetPosition : undefined,
           status: remaining.length > 0 ? "moving" : "idle",
-          energy: Math.max(0, agent.energy - ENERGY.MOVEMENT_COST),
+          energy: Math.round(Math.max(0, agent.energy - ENERGY.MOVEMENT_COST)),
         });
         continue;
       }
@@ -62,7 +62,7 @@ export const run = internalMutation({
       if (agent.status === "sleeping") {
         const nearShelter = await hasBuildingBonus(ctx, agent.position, "shelter");
         const regenRate = ENERGY.SLEEP_REGEN + (nearShelter ? ENERGY.SHELTER_BONUS_REGEN : 0);
-        const newEnergy = Math.min(100, agent.energy + regenRate);
+        const newEnergy = Math.round(Math.min(100, agent.energy + regenRate));
         if (newEnergy >= 90) {
           await ctx.db.patch(agent._id, { energy: newEnergy, status: "idle" });
         } else {
@@ -72,7 +72,7 @@ export const run = internalMutation({
       }
 
       // Passive energy drain for all non-sleeping agents (hunger)
-      const drainedEnergy = Math.max(0, agent.energy - ENERGY.PASSIVE_DRAIN);
+      const drainedEnergy = Math.round(Math.max(0, agent.energy - ENERGY.PASSIVE_DRAIN));
 
       // Starvation effects: mood deterioration when critically low
       if (drainedEnergy < ENERGY.STARVATION_THRESHOLD && drainedEnergy > 0) {
@@ -90,7 +90,7 @@ export const run = internalMutation({
       // Auto-rest when critically low on energy
       if (drainedEnergy < ENERGY.CRITICAL_THRESHOLD) {
         await ctx.db.patch(agent._id, {
-          energy: Math.min(100, drainedEnergy + 15),
+          energy: Math.round(Math.min(100, drainedEnergy + 15)),
           status: "sleeping",
           path: undefined,
           targetPosition: undefined,
@@ -154,7 +154,7 @@ export const run = internalMutation({
             path: path.length > 2 ? path.slice(2) : undefined,
             targetPosition: path.length > 2 ? { x: targetX, y: targetY } : undefined,
             status: path.length > 2 ? "moving" : "idle",
-            energy: Math.max(0, agent.energy - ENERGY.MOVEMENT_COST),
+            energy: Math.round(Math.max(0, agent.energy - ENERGY.MOVEMENT_COST)),
           });
         }
       }

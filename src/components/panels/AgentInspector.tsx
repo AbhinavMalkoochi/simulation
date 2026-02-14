@@ -88,7 +88,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentDoc; onClose: (
           <div className="h-1.5 bg-neutral-100 rounded-full mt-1">
             <div
               className="h-full bg-neutral-800 rounded-full transition-all"
-              style={{ width: `${agent.energy}%` }}
+              style={{ width: `${Math.round(agent.energy)}%` }}
             />
           </div>
           <span className="text-[10px] text-neutral-400 tabular-nums">{Math.round(agent.energy)}%</span>
@@ -98,7 +98,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentDoc; onClose: (
           <div className="h-1.5 bg-neutral-100 rounded-full mt-1">
             <div
               className="h-full bg-neutral-500 rounded-full transition-all"
-              style={{ width: `${((agent.emotion.valence + 1) / 2) * 100}%` }}
+              style={{ width: `${Math.round(((agent.emotion.valence + 1) / 2) * 100)}%` }}
             />
           </div>
           <span className="text-[10px] text-neutral-400 tabular-nums">{((agent.emotion.valence + 1) / 2 * 100).toFixed(0)}%</span>
@@ -126,7 +126,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentDoc; onClose: (
           <div className="flex flex-wrap gap-1.5">
             {inventory.map((item) => (
               <span key={item._id} className="px-2 py-1 bg-neutral-100 rounded-md text-[11px] text-neutral-600">
-                {item.quantity} {item.itemType}
+                {Math.round(item.quantity)} {item.itemType}
               </span>
             ))}
           </div>

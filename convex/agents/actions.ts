@@ -143,7 +143,7 @@ export const restAgent = internalMutation({
     const agent = await ctx.db.get(agentId);
     if (!agent) return "Agent not found.";
 
-    const newEnergy = Math.min(100, agent.energy + 15);
+    const newEnergy = Math.round(Math.min(100, agent.energy + 15));
     await ctx.db.patch(agentId, {
       energy: newEnergy,
       status: "sleeping",
@@ -255,9 +255,10 @@ export const gatherResource = internalMutation({
     await ctx.db.patch(nearby._id, { quantity: nearby.quantity - gatherAmount });
     await addItem(ctx, agentId, resourceType, gatherAmount);
 
+    const newEnergy = Math.round(Math.max(0, agent.energy - ENERGY.GATHER_COST));
     await ctx.db.patch(agentId, {
       status: "working",
-      energy: Math.max(0, agent.energy - ENERGY.GATHER_COST),
+      energy: newEnergy,
     });
 
     const world = await ctx.db.query("worldState").first();
@@ -270,7 +271,7 @@ export const gatherResource = internalMutation({
       tick,
     });
 
-    return `Gathered ${gatherAmount} ${resourceType}. Energy: ${Math.max(0, agent.energy - ENERGY.GATHER_COST)}%.`;
+    return `Gathered ${gatherAmount} ${resourceType}. Energy: ${newEnergy}%.`;
   },
 });
 
@@ -332,7 +333,7 @@ export const craftItem = internalMutation({
     const craftCost = nearWorkshop
       ? Math.max(1, ENERGY.CRAFT_COST - BUILDING_BONUS.workshop.craftEnergySave)
       : ENERGY.CRAFT_COST;
-    await ctx.db.patch(agentId, { status: "working", energy: Math.max(0, agent.energy - craftCost) });
+    await ctx.db.patch(agentId, { status: "working", energy: Math.round(Math.max(0, agent.energy - craftCost)) });
 
     const world = await ctx.db.query("worldState").first();
     await ctx.db.insert("worldEvents", {
@@ -394,7 +395,7 @@ export const buildStructure = internalMutation({
       level: 1,
     });
 
-    await ctx.db.patch(agentId, { status: "working", energy: Math.max(0, agent.energy - ENERGY.BUILD_COST) });
+    await ctx.db.patch(agentId, { status: "working", energy: Math.round(Math.max(0, agent.energy - ENERGY.BUILD_COST)) });
 
     const world = await ctx.db.query("worldState").first();
     await ctx.db.insert("worldEvents", {
@@ -474,11 +475,10 @@ export const eatFood = internalMutation({
 
     if (!removed) return "You have no food or meals.";
 
-    await ctx.db.patch(agentId, {
-      energy: Math.min(100, agent.energy + energyGain),
-    });
+    const newEnergy = Math.round(Math.min(100, agent.energy + energyGain));
+    await ctx.db.patch(agentId, { energy: newEnergy });
 
-    return `Ate and recovered ${energyGain} energy. Now at ${Math.min(100, agent.energy + energyGain)}%.`;
+    return `Ate and recovered ${energyGain} energy. Now at ${newEnergy}%.`;
   },
 });
 
@@ -735,7 +735,7 @@ export const repairBuilding = internalMutation({
 
     const newCondition = Math.min(100, building.condition + 20);
     await ctx.db.patch(building._id, { condition: newCondition });
-    await ctx.db.patch(agentId, { status: "working", energy: Math.max(0, agent.energy - 5) });
+    await ctx.db.patch(agentId, { status: "working", energy: Math.round(Math.max(0, agent.energy - 5)) });
 
     return `Repaired ${building.type} to ${newCondition}% condition.`;
   },

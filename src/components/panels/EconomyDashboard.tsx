@@ -47,7 +47,7 @@ export function EconomyDashboard({ stats }: { stats: EconomyStats | undefined })
               <div className="flex-1 h-1 bg-neutral-100 rounded-full overflow-hidden">
                 <div className="h-full rounded-full bg-neutral-600" style={{ width: `${(agent.total / maxWealth) * 100}%` }} />
               </div>
-              <span className="text-[10px] text-neutral-400 tabular-nums w-6 text-right">{agent.total}</span>
+              <span className="text-[10px] text-neutral-400 tabular-nums w-6 text-right">{Math.round(agent.total)}</span>
             </div>
           ))}
         </div>

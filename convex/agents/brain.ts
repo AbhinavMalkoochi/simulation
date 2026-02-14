@@ -524,8 +524,8 @@ export const think = internalAction({
 
       await ctx.runMutation(internal.agents.actions.updateEmotion, {
         agentId,
-        valence: agent.emotion.valence + (Math.random() - 0.5) * 0.1,
-        arousal: agent.emotion.arousal + (Math.random() - 0.5) * 0.1,
+        valence: Math.round((agent.emotion.valence + (Math.random() - 0.5) * 0.1) * 100) / 100,
+        arousal: Math.round((agent.emotion.arousal + (Math.random() - 0.5) * 0.1) * 100) / 100,
       });
     } catch (error) {
       console.error(`Agent ${agent.name} thinking failed:`, error);
