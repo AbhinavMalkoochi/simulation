@@ -38,7 +38,15 @@ type Conversation = {
 
 type InventoryItem = { itemType: string; quantity: number };
 type NearbyBuilding = { type: string; posX: number; posY: number };
-type Relationship = { targetAgentId: string; trust: number; affinity: number };
+type Relationship = {
+  targetAgentId: string;
+  trust: number;
+  affinity: number;
+  sharedExperiences?: string[];
+  lastTopics?: string[];
+  opinion?: string;
+  role?: string;
+};
 type LastSighting = {
   name: string;
   position: { x: number; y: number };
@@ -117,17 +125,27 @@ function describeMood(valence: number, arousal: number): string {
 
 // --- Relationships ---
 
-function describeRelationship(name: string, trust: number, affinity: number): string {
-  if (trust > 0.5 && affinity > 0.5) return `${name} — a close friend you trust deeply`;
-  if (trust > 0.5 && affinity > 0.2) return `${name} — someone you trust and respect`;
-  if (trust > 0.2 && affinity > 0.5) return `${name} — a friendly acquaintance you like`;
-  if (trust > 0.2 && affinity > 0.2) return `${name} — someone you're getting to know`;
-  if (trust > 0 && affinity > 0) return `${name} — a neutral acquaintance`;
-  if (trust < -0.3 && affinity < -0.3) return `${name} — someone you deeply distrust and dislike`;
-  if (trust < -0.3) return `${name} — someone you distrust`;
-  if (affinity < -0.3) return `${name} — someone you dislike`;
-  if (trust < 0 || affinity < 0) return `${name} — someone you feel uneasy about`;
-  return `${name} — a stranger`;
+function describeRelationship(r: Relationship): string {
+  const name = r.targetAgentId;
+  const { trust, affinity, role, lastTopics, sharedExperiences, opinion } = r;
+
+  let label: string;
+  if (trust > 0.5 && affinity > 0.5) label = "a close friend you trust deeply";
+  else if (trust > 0.5 && affinity > 0.2) label = "someone you trust and respect";
+  else if (trust > 0.2 && affinity > 0.5) label = "a friendly acquaintance you like";
+  else if (trust > 0.2 && affinity > 0.2) label = "someone you're getting to know";
+  else if (trust > 0 && affinity > 0) label = "a neutral acquaintance";
+  else if (trust < -0.3 && affinity < -0.3) label = "someone you deeply distrust and dislike";
+  else if (trust < -0.3) label = "someone you distrust";
+  else if (affinity < -0.3) label = "someone you dislike";
+  else if (trust < 0 || affinity < 0) label = "someone you feel uneasy about";
+  else label = "a stranger";
+
+  let desc = `${name} — ${role ? `your ${role}, ` : ""}${label}`;
+  if (opinion) desc += `. You think: "${opinion}"`;
+  if (lastTopics && lastTopics.length > 0) desc += `. Last talked about: ${lastTopics.join(", ")}`;
+  if (sharedExperiences && sharedExperiences.length > 0) desc += `. Shared history: ${sharedExperiences.slice(-2).join("; ")}`;
+  return desc;
 }
 
 // --- Plan ---
@@ -360,7 +378,7 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
     : "";
 
   const relationshipLines = relationships.length > 0
-    ? relationships.map((r) => describeRelationship(r.targetAgentId, r.trust, r.affinity)).join("\n")
+    ? relationships.map((r) => describeRelationship(r)).join("\n")
     : "No established relationships yet.";
 
   const reputationLines = reputations.length > 0

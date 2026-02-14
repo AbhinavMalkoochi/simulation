@@ -98,9 +98,13 @@ export default defineSchema({
     affinity: v.number(),
     interactionCount: v.number(),
     lastInteractionTick: v.number(),
-    // Last seen location memory (Tier 1)
     lastSeenPosition: v.optional(position),
     lastSeenTick: v.optional(v.number()),
+    // Rich relationship context
+    sharedExperiences: v.optional(v.array(v.string())),
+    lastTopics: v.optional(v.array(v.string())),
+    opinion: v.optional(v.string()),
+    role: v.optional(v.string()),
   })
     .index("by_agent", ["agentId"])
     .index("by_pair", ["agentId", "targetAgentId"]),

@@ -479,6 +479,10 @@ export const think = internalAction({
         targetAgentId: agentNames.get(r.targetAgentId) ?? r.targetAgentId,
         trust: r.trust,
         affinity: r.affinity,
+        sharedExperiences: r.sharedExperiences,
+        lastTopics: r.lastTopics,
+        opinion: r.opinion,
+        role: r.role,
       })),
       myAlliances: myAlliances.map((a) => ({
         name: a.name,

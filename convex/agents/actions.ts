@@ -5,7 +5,7 @@ import { generateMap, isWalkable } from "../lib/mapgen";
 import { findPath } from "../engine/pathfinding";
 import { addItem, removeItem, hasItems, getInventory, degradeItem, addItemWithDurability } from "../world/inventory";
 import { findRecipe, BUILDING_COSTS } from "../world/recipes";
-import { updateRelationship } from "../social/relationships";
+import { updateRelationship, addSharedExperience, updateConversationTopics } from "../social/relationships";
 import { ENERGY, DURABILITY, BUILDING_BONUS, MAP_REGIONS, getRegionName } from "../lib/constants";
 import { hasBuildingBonus } from "../world/systems";
 
@@ -134,6 +134,48 @@ export const speakTo = internalMutation({
     }
 
     return `You said "${message}" to ${target.name}.`;
+  },
+});
+
+export const closeConversationWithContext = internalMutation({
+  args: {
+    conversationId: v.id("conversations"),
+    tick: v.number(),
+  },
+  handler: async (ctx, { conversationId, tick }) => {
+    const conv = await ctx.db.get(conversationId);
+    if (!conv || conv.messages.length < 2) return;
+
+    // Extract simple topic keywords from conversation content
+    const allText = conv.messages.map((m) => m.content).join(" ");
+    const topicWords = allText
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length > 4)
+      .reduce<Map<string, number>>((acc, w) => {
+        acc.set(w, (acc.get(w) ?? 0) + 1);
+        return acc;
+      }, new Map());
+
+    const topics = [...topicWords.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([word]) => word);
+
+    const [id1, id2] = conv.participantIds;
+    if (!id1 || !id2) return;
+
+    if (topics.length > 0) {
+      await updateConversationTopics(ctx, id1, id2, topics);
+      await updateConversationTopics(ctx, id2, id1, topics);
+    }
+
+    // Mark substantive conversations as shared experiences
+    if (conv.messages.length >= 4) {
+      const summary = `Had a conversation (${conv.messages.length} messages) around tick ${tick}`;
+      await addSharedExperience(ctx, id1, id2, summary);
+      await addSharedExperience(ctx, id2, id1, summary);
+    }
   },
 });
 

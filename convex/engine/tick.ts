@@ -187,7 +187,7 @@ export const run = internalMutation({
       }
     }
 
-    // Close stale conversations (no new messages for 10+ ticks)
+    // Close stale conversations and extract context (no new messages for 10+ ticks)
     if (newTick % 5 === 0) {
       const openConvs = await ctx.db.query("conversations").order("desc").take(20);
       for (const conv of openConvs) {
@@ -197,6 +197,10 @@ export const run = internalMutation({
           : conv.startTick;
         if (newTick - lastMsgTick >= 10) {
           await ctx.db.patch(conv._id, { endTick: newTick });
+          await ctx.scheduler.runAfter(0, internal.agents.actions.closeConversationWithContext, {
+            conversationId: conv._id,
+            tick: newTick,
+          });
         }
       }
     }

@@ -40,6 +40,57 @@ export async function updateRelationship(
   await recalculateReputation(ctx, targetId, tick);
 }
 
+export async function addSharedExperience(
+  ctx: MutationCtx,
+  agentId: Id<"agents">,
+  targetId: Id<"agents">,
+  experience: string,
+): Promise<void> {
+  const existing = await ctx.db
+    .query("relationships")
+    .withIndex("by_pair", (q) => q.eq("agentId", agentId).eq("targetAgentId", targetId))
+    .first();
+
+  if (!existing) return;
+
+  const experiences = existing.sharedExperiences ?? [];
+  // Keep only last 5 experiences
+  const updated = [...experiences, experience].slice(-5);
+  await ctx.db.patch(existing._id, { sharedExperiences: updated });
+}
+
+export async function updateConversationTopics(
+  ctx: MutationCtx,
+  agentId: Id<"agents">,
+  targetId: Id<"agents">,
+  topics: string[],
+): Promise<void> {
+  const existing = await ctx.db
+    .query("relationships")
+    .withIndex("by_pair", (q) => q.eq("agentId", agentId).eq("targetAgentId", targetId))
+    .first();
+
+  if (!existing) return;
+
+  await ctx.db.patch(existing._id, { lastTopics: topics.slice(0, 3) });
+}
+
+export async function setRelationshipRole(
+  ctx: MutationCtx,
+  agentId: Id<"agents">,
+  targetId: Id<"agents">,
+  role: string,
+): Promise<void> {
+  const existing = await ctx.db
+    .query("relationships")
+    .withIndex("by_pair", (q) => q.eq("agentId", agentId).eq("targetAgentId", targetId))
+    .first();
+
+  if (!existing) return;
+
+  await ctx.db.patch(existing._id, { role });
+}
+
 /** Recalculate an agent's reputation as the average trust from all incoming relationships */
 export async function recalculateReputation(
   ctx: MutationCtx,
