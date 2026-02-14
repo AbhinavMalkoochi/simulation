@@ -495,15 +495,17 @@ ${previousConversationSummary ? `\nYOUR HISTORY WITH ${partnerName.toUpperCase()
 ${partnerName} is talking to you:
 ${messageLines}
 
-Respond naturally and in character. Have a real conversation — share your thoughts, ask questions, make plans together, joke, argue, commiserate. Don't just acknowledge what they said; build on it.
+Respond naturally and in character. Have a REAL conversation — share your deepest thoughts, beliefs, and dreams. Don't just acknowledge what they said; build on it. Discuss philosophy, debate values, make plans, gossip about others, propose forming organizations together, or argue passionately about what matters to you.
 
 You may:
-- Use the speak tool to reply to ${partnerName}
-- Use the think tool to record a private thought
-- Use the setPlan tool if the conversation inspires a new goal
-- Use the proposeTrade tool if you want to make a deal
+- speak: Reply to ${partnerName} (share thoughts, ask questions, debate, joke)
+- think: Record a private thought about the conversation
+- setPlan: Set a new goal inspired by this conversation
+- proposeTrade: Make a trade deal
+- shareBelief: Share one of your beliefs, values, or philosophies to discuss or debate
+- proposeIdea: Propose forming a group, company, religion, or club together
 
-Keep your response natural (2-4 sentences). Be genuine to your personality.`;
+Keep your response natural (2-4 sentences). Be genuine to your personality. If you feel strongly about something, SAY IT.`;
 }
 
 // --- Reflection Prompt ---

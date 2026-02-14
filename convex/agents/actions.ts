@@ -95,9 +95,12 @@ export const speakTo = internalMutation({
 
     await ctx.db.patch(speakerId, { status: "talking" });
 
-    // Conversations build small amounts of trust and affinity
-    await updateRelationship(ctx, speakerId, target._id, 0.03, 0.05, tick);
-    await updateRelationship(ctx, target._id, speakerId, 0.03, 0.05, tick);
+    // Conversation quality heuristic: longer, substantive messages build more trust
+    const isSubstantive = message.length > 40;
+    const trustGain = isSubstantive ? 0.05 : 0.03;
+    const affinityGain = isSubstantive ? 0.07 : 0.05;
+    await updateRelationship(ctx, speakerId, target._id, trustGain, affinityGain, tick);
+    await updateRelationship(ctx, target._id, speakerId, trustGain, affinityGain, tick);
 
     await ctx.db.insert("memories", {
       agentId: target._id,

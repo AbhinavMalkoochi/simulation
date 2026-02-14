@@ -658,7 +658,7 @@ export const reflect = internalAction({
 
 // --- Conversation Response ---
 
-const MAX_CONVERSATION_EXCHANGES = 8;
+const BASE_CONVERSATION_EXCHANGES = 8;
 
 export const respondToConversation = internalAction({
   args: {
@@ -687,8 +687,11 @@ export const respondToConversation = internalAction({
     }
     if (!conv || conv.messages.length === 0) return;
 
+    // Extraversion boosts conversation length cap
+    const maxExchanges = BASE_CONVERSATION_EXCHANGES + (agent.personality.extraversion > 0.6 ? 4 : 0);
+
     const myMessages = conv.messages.filter((m) => m.speakerId === String(agentId));
-    if (myMessages.length >= MAX_CONVERSATION_EXCHANGES) return;
+    if (myMessages.length >= maxExchanges) return;
 
     const speakerNames = new Map<string, string>();
     speakerNames.set(String(agentId), agent.name);
@@ -792,13 +795,60 @@ export const respondToConversation = internalAction({
           });
         },
       }),
+      shareBelief: tool({
+        description: "Share one of your beliefs, values, or philosophies with the other person. Use this to discuss ideas, convert others to your worldview, or debate.",
+        inputSchema: z.object({
+          targetName: z.string().describe("Person to share with"),
+          belief: z.string().describe("The belief or value you want to share"),
+          message: z.string().describe("How you express this belief in conversation"),
+        }),
+        execute: async ({ targetName, belief, message }: { targetName: string; belief: string; message: string }) => {
+          // Store the belief-sharing as a conversation message
+          const result = await ctx.runMutation(internal.agents.actions.speakTo, {
+            speakerId: agentId,
+            targetName,
+            message,
+          });
+          // Reinforce the belief through sharing
+          await ctx.runMutation(internal.agents.actions.storeBelief, {
+            agentId,
+            category: "philosophy" as const,
+            content: belief,
+            confidence: 0.6,
+            tick,
+            formedFrom: `shared with ${partnerName}`,
+          });
+          return result;
+        },
+      }),
+      proposeIdea: tool({
+        description: "Propose forming a group, company, religion, club, or any organization with the other person.",
+        inputSchema: z.object({
+          targetName: z.string().describe("Person to propose to"),
+          ideaType: z.string().describe("Type: alliance, company, religion, club, cult"),
+          name: z.string().describe("Proposed name for the group"),
+          message: z.string().describe("How you pitch this idea"),
+        }),
+        execute: async ({ targetName, name, message }: { targetName: string; name: string; message: string }) => {
+          const speakResult = await ctx.runMutation(internal.agents.actions.speakTo, {
+            speakerId: agentId,
+            targetName,
+            message,
+          });
+          const allianceResult = await ctx.runMutation(internal.social.alliances.create, {
+            founderId: agentId,
+            name,
+          });
+          return `${speakResult} ${allianceResult}`;
+        },
+      }),
     };
 
     try {
       await generateText({
         model: openai("gpt-4o-mini"),
         system: prompt,
-        prompt: `${partnerName} just spoke to you. Respond naturally — be engaging, share your thoughts, ask questions.`,
+        prompt: `${partnerName} just spoke to you. Respond naturally — be engaging, share your thoughts, ask questions. If you have strong beliefs, share them.`,
         tools,
         stopWhen: stepCountIs(1),
       });
