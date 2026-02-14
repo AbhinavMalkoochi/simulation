@@ -87,3 +87,70 @@ export const PERCEPTION = {
   GIVE_RANGE: 3,
   GATHER_RANGE: 2,
 } as const;
+
+// --- Named Map Regions ---
+
+export interface MapRegion {
+  readonly name: string;
+  readonly xMin: number;
+  readonly xMax: number;
+  readonly yMin: number;
+  readonly yMax: number;
+}
+
+export const MAP_REGIONS: readonly MapRegion[] = [
+  { name: "Northshore Beach", xMin: 0, xMax: 19, yMin: 0, yMax: 19 },
+  { name: "Pine Hollow", xMin: 20, xMax: 39, yMin: 0, yMax: 19 },
+  { name: "Iron Summit", xMin: 40, xMax: 59, yMin: 0, yMax: 19 },
+  { name: "Eastern Cliffs", xMin: 60, xMax: 79, yMin: 0, yMax: 19 },
+  { name: "Whispering Meadow", xMin: 0, xMax: 19, yMin: 20, yMax: 39 },
+  { name: "Hearthstone Valley", xMin: 20, xMax: 39, yMin: 20, yMax: 39 },
+  { name: "Granite Pass", xMin: 40, xMax: 59, yMin: 20, yMax: 39 },
+  { name: "Duskwood Edge", xMin: 60, xMax: 79, yMin: 20, yMax: 39 },
+  { name: "Sunlit Grove", xMin: 0, xMax: 19, yMin: 40, yMax: 59 },
+  { name: "Clearwater Basin", xMin: 20, xMax: 39, yMin: 40, yMax: 59 },
+  { name: "Stonehearth Plateau", xMin: 40, xMax: 59, yMin: 40, yMax: 59 },
+  { name: "Windbreak Ridge", xMin: 60, xMax: 79, yMin: 40, yMax: 59 },
+  { name: "Ferndale Lowlands", xMin: 0, xMax: 19, yMin: 60, yMax: 79 },
+  { name: "Riverbend Crossing", xMin: 20, xMax: 39, yMin: 60, yMax: 79 },
+  { name: "Ashfall Quarry", xMin: 40, xMax: 59, yMin: 60, yMax: 79 },
+  { name: "Farwatch Outpost", xMin: 60, xMax: 79, yMin: 60, yMax: 79 },
+] as const;
+
+export function getRegionName(x: number, y: number): string {
+  for (const r of MAP_REGIONS) {
+    if (x >= r.xMin && x <= r.xMax && y >= r.yMin && y <= r.yMax) return r.name;
+  }
+  return "the wilderness";
+}
+
+export function getRelativeDirection(
+  fromX: number, fromY: number,
+  toX: number, toY: number,
+): string {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist < 2) return "right here";
+  if (dist < 5) return "nearby";
+
+  const parts: string[] = [];
+  if (dy < -2) parts.push("north");
+  else if (dy > 2) parts.push("south");
+  if (dx > 2) parts.push("east");
+  else if (dx < -2) parts.push("west");
+
+  const dir = parts.join("-") || "nearby";
+  if (dist < 10) return `a short walk to the ${dir}`;
+  if (dist < 25) return `to the ${dir}`;
+  return `far to the ${dir}`;
+}
+
+export function describeDistance(dist: number): string {
+  if (dist < 2) return "right here";
+  if (dist < 4) return "a few steps away";
+  if (dist < 8) return "a short walk";
+  if (dist < 15) return "a moderate walk";
+  return "far away";
+}
