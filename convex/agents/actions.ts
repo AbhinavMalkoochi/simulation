@@ -9,6 +9,21 @@ import { updateRelationship, addSharedExperience, updateConversationTopics } fro
 import { ENERGY, DURABILITY, BUILDING_BONUS, MAP_REGIONS, getRegionName } from "../lib/constants";
 import { hasBuildingBonus } from "../world/systems";
 
+import type { MutationCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
+
+type SkillName = "gathering" | "crafting" | "building" | "trading" | "leadership";
+
+async function improveSkill(ctx: MutationCtx, agentId: Id<"agents">, skill: SkillName, amount: number) {
+  const agent = await ctx.db.get(agentId);
+  if (!agent) return;
+  const current = agent.skills[skill];
+  if (current >= 10) return;
+  await ctx.db.patch(agentId, {
+    skills: { ...agent.skills, [skill]: Math.round(Math.min(10, current + amount) * 100) / 100 },
+  });
+}
+
 export const moveAgent = internalMutation({
   args: {
     agentId: v.id("agents"),
@@ -319,6 +334,102 @@ export const updateEmotion = internalMutation({
   },
 });
 
+export const applyEmotionEvent = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    event: v.union(
+      v.literal("build_success"),
+      v.literal("craft_success"),
+      v.literal("good_conversation"),
+      v.literal("gift_received"),
+      v.literal("gift_given"),
+      v.literal("plan_completed"),
+      v.literal("confrontation"),
+      v.literal("loneliness"),
+      v.literal("trade_completed"),
+    ),
+  },
+  handler: async (ctx, { agentId, event }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return;
+
+    const deltas: Record<string, { v: number; a: number }> = {
+      build_success: { v: 0.12, a: 0.05 },
+      craft_success: { v: 0.08, a: 0.03 },
+      good_conversation: { v: 0.10, a: 0.06 },
+      gift_received: { v: 0.14, a: 0.04 },
+      gift_given: { v: 0.06, a: 0.02 },
+      plan_completed: { v: 0.15, a: 0.08 },
+      confrontation: { v: -0.15, a: 0.20 },
+      loneliness: { v: -0.06, a: -0.03 },
+      trade_completed: { v: 0.10, a: 0.05 },
+    };
+
+    const d = deltas[event] ?? { v: 0, a: 0 };
+
+    // Personality modulates emotional responses
+    const neuroticismMod = 1 + (agent.personality.neuroticism - 0.5) * 0.6;
+    const agreeablenessMod = event === "good_conversation" || event === "gift_received"
+      ? 1 + (agent.personality.agreeableness - 0.5) * 0.4
+      : 1;
+
+    const vDelta = d.v * neuroticismMod * agreeablenessMod;
+    const aDelta = d.a * neuroticismMod;
+
+    await ctx.db.patch(agentId, {
+      emotion: {
+        valence: Math.max(-1, Math.min(1, agent.emotion.valence + vDelta)),
+        arousal: Math.max(0, Math.min(1, agent.emotion.arousal + aDelta)),
+      },
+    });
+  },
+});
+
+export const progressSkill = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    skill: v.union(
+      v.literal("gathering"),
+      v.literal("crafting"),
+      v.literal("building"),
+      v.literal("trading"),
+      v.literal("leadership"),
+    ),
+    amount: v.number(),
+  },
+  handler: async (ctx, { agentId, skill, amount }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return;
+
+    const current = agent.skills[skill];
+    const maxSkill = 10;
+    if (current >= maxSkill) return;
+
+    const newValue = Math.round(Math.min(maxSkill, current + amount) * 100) / 100;
+    await ctx.db.patch(agentId, {
+      skills: { ...agent.skills, [skill]: newValue },
+    });
+  },
+});
+
+export const updateAgentTraits = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    interests: v.optional(v.array(v.string())),
+    habits: v.optional(v.array(v.string())),
+    longTermGoal: v.optional(v.string()),
+  },
+  handler: async (ctx, { agentId, interests, habits, longTermGoal }) => {
+    const patch: Record<string, unknown> = {};
+    if (interests !== undefined) patch.interests = interests.slice(0, 5);
+    if (habits !== undefined) patch.habits = habits.slice(0, 5);
+    if (longTermGoal !== undefined) patch.longTermGoal = longTermGoal;
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(agentId, patch);
+    }
+  },
+});
+
 export const gatherResource = internalMutation({
   args: {
     agentId: v.id("agents"),
@@ -364,6 +475,9 @@ export const gatherResource = internalMutation({
       involvedAgentIds: [agentId],
       tick,
     });
+
+    // Skill progression: gathering improves with practice
+    await improveSkill(ctx, agentId, "gathering", 0.1);
 
     return `Gathered ${gatherAmount} ${resourceType}. Energy: ${newEnergy}%.`;
   },
@@ -437,6 +551,8 @@ export const craftItem = internalMutation({
       tick: world?.tick ?? 0,
     });
 
+    await improveSkill(ctx, agentId, "crafting", 0.1);
+
     return `Crafted ${outputQty} ${outputType}${bonusOutput > 0 ? " (bonus!)" : ""}.`;
   },
 });
@@ -507,6 +623,8 @@ export const buildStructure = internalMutation({
       involvedAgentIds: [agentId],
       tick: world?.tick ?? 0,
     });
+
+    await improveSkill(ctx, agentId, "building", 0.15);
 
     return `Built a ${buildingType} at your location.`;
   },

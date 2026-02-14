@@ -296,6 +296,9 @@ interface BuildPromptArgs {
     currentPlan?: string;
     planSteps?: string[];
     planStep?: number;
+    interests?: string[];
+    habits?: string[];
+    longTermGoal?: string;
     _id: string;
   };
   memories: Memory[];
@@ -430,6 +433,9 @@ ${agent.backstory}
 YOUR PERSONALITY:
 ${personalityDesc}
 ${agent.communicationStyle ? `\nYOUR VOICE:\n${agent.communicationStyle}` : ""}
+${agent.interests && agent.interests.length > 0 ? `\nYOUR INTERESTS: ${agent.interests.join(", ")}` : ""}
+${agent.habits && agent.habits.length > 0 ? `\nYOUR HABITS: ${agent.habits.join("; ")}` : ""}
+${agent.longTermGoal ? `\nYOUR LIFE AMBITION: ${agent.longTermGoal}` : ""}
 
 CURRENT STATE:
 - You are in ${region}
@@ -540,6 +546,12 @@ BELIEFS:
 - [value] Content of belief
 - [goal] Content of goal
 
-Use ONLY these categories: value, opinion, philosophy, goal.
-If no new beliefs emerged, write "BELIEFS: none"`;
+TRAITS:
+- interest: something you've discovered you enjoy
+- habit: a behavior pattern you've developed
+- ambition: your evolving life goal (only if it changed)
+
+Use ONLY belief categories: value, opinion, philosophy, goal.
+If no new beliefs emerged, write "BELIEFS: none".
+If no new traits emerged, write "TRAITS: none".`;
 }

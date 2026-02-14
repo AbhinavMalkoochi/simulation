@@ -464,7 +464,15 @@ export const think = internalAction({
     const day = Math.floor(tick / TICKS_PER_DAY) + 1;
 
     const systemPrompt = buildSystemPrompt({
-      agent: { ...agent, _id: String(agentId), planSteps: agent.planSteps ?? undefined, planStep: agent.planStep ?? undefined },
+      agent: {
+        ...agent,
+        _id: String(agentId),
+        planSteps: agent.planSteps ?? undefined,
+        planStep: agent.planStep ?? undefined,
+        interests: agent.interests ?? undefined,
+        habits: agent.habits ?? undefined,
+        longTermGoal: agent.longTermGoal ?? undefined,
+      },
       memories: scored.slice(0, 12),
       nearbyAgents: nearbyAgents.map((a) => ({
         name: a.name,
@@ -545,11 +553,21 @@ export const think = internalAction({
         });
       }
 
+      // Smaller random drift (personality-modulated) + loneliness detection
+      const drift = 0.03 * (1 + (agent.personality.neuroticism - 0.5) * 0.5);
       await ctx.runMutation(internal.agents.actions.updateEmotion, {
         agentId,
-        valence: Math.round((agent.emotion.valence + (Math.random() - 0.5) * 0.1) * 100) / 100,
-        arousal: Math.round((agent.emotion.arousal + (Math.random() - 0.5) * 0.1) * 100) / 100,
+        valence: Math.round((agent.emotion.valence + (Math.random() - 0.5) * drift) * 100) / 100,
+        arousal: Math.round((agent.emotion.arousal + (Math.random() - 0.5) * drift) * 100) / 100,
       });
+
+      // Loneliness: no nearby agents and extraversion > 0.5
+      if (nearbyAgents.length === 0 && agent.personality.extraversion > 0.5) {
+        await ctx.runMutation(internal.agents.actions.applyEmotionEvent, {
+          agentId,
+          event: "loneliness",
+        });
+      }
     } catch (error) {
       console.error(`Agent ${agent.name} thinking failed:`, error);
     }
@@ -641,6 +659,44 @@ export const reflect = internalAction({
             }
           }
         }
+      }
+
+      // Parse traits (interests, habits, ambition)
+      const traitMatch = text.match(/TRAITS?:\s*\n([\s\S]*?)$/i);
+      if (traitMatch && !traitMatch[1].trim().toLowerCase().startsWith("none")) {
+        const traitLines = traitMatch[1].split("\n").filter((l) => l.trim().length > 3);
+        const newInterests: string[] = [...(agent.interests ?? [])];
+        const newHabits: string[] = [...(agent.habits ?? [])];
+        let newGoal = agent.longTermGoal;
+
+        for (const line of traitLines) {
+          const interestMatch = line.match(/interest:\s*(.+)/i);
+          const habitMatch = line.match(/habit:\s*(.+)/i);
+          const ambitionMatch = line.match(/ambition:\s*(.+)/i);
+
+          if (interestMatch) {
+            const interest = interestMatch[1].replace(/^[-*•\s]+/, "").trim();
+            if (interest.length > 3 && !newInterests.includes(interest)) {
+              newInterests.push(interest);
+            }
+          }
+          if (habitMatch) {
+            const habit = habitMatch[1].replace(/^[-*•\s]+/, "").trim();
+            if (habit.length > 3 && !newHabits.includes(habit)) {
+              newHabits.push(habit);
+            }
+          }
+          if (ambitionMatch) {
+            newGoal = ambitionMatch[1].replace(/^[-*•\s]+/, "").trim();
+          }
+        }
+
+        await ctx.runMutation(internal.agents.actions.updateAgentTraits, {
+          agentId,
+          interests: newInterests.slice(-5),
+          habits: newHabits.slice(-5),
+          longTermGoal: newGoal,
+        });
       }
 
       await ctx.runMutation(internal.agents.memory.store, {

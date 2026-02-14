@@ -71,6 +71,9 @@ export default defineSchema({
       leadership: v.number(),
     }),
     communicationStyle: v.optional(v.string()),
+    interests: v.optional(v.array(v.string())),
+    habits: v.optional(v.array(v.string())),
+    longTermGoal: v.optional(v.string()),
     spriteSeed: v.number(),
   }).index("by_status", ["status"]),
 
