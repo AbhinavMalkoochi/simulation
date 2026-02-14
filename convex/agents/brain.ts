@@ -8,151 +8,68 @@ import { buildSystemPrompt, buildReflectionPrompt, buildConversationPrompt } fro
 import { scoreMemories } from "./memory";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
+import { MAP_REGIONS } from "../lib/constants";
+
+// --- Tool Definitions ---
 
 function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
   return {
-    moveTo: tool({
-      description: "Move to a specific location. Choose coordinates based on what you see nearby or want to explore.",
+    goToResource: tool({
+      description: "Travel to the nearest source of a resource type. The world will find the closest one for you.",
       inputSchema: z.object({
-        x: z.number().describe("Target x coordinate"),
-        y: z.number().describe("Target y coordinate"),
-      }),
-      execute: async ({ x, y }) => {
-        return ctx.runMutation(internal.agents.actions.moveAgent, {
-          agentId,
-          targetX: Math.round(x),
-          targetY: Math.round(y),
-        });
-      },
-    }),
-
-    speak: tool({
-      description: "Say something to a nearby person. They will hear you and may respond later.",
-      inputSchema: z.object({
-        targetName: z.string().describe("Name of the person to talk to"),
-        message: z.string().describe("What you want to say"),
-      }),
-      execute: async ({ targetName, message }) => {
-        return ctx.runMutation(internal.agents.actions.speakTo, {
-          speakerId: agentId,
-          targetName,
-          message,
-        });
-      },
-    }),
-
-    rest: tool({
-      description: "Rest and recover energy. Use when your energy is below 30%.",
-      inputSchema: z.object({}),
-      execute: async () => {
-        return ctx.runMutation(internal.agents.actions.restAgent, { agentId });
-      },
-    }),
-
-    think: tool({
-      description: "Record a private thought or observation about your situation.",
-      inputSchema: z.object({
-        thought: z.string().describe("Your thought or observation"),
-      }),
-      execute: async ({ thought }) => {
-        return ctx.runMutation(internal.agents.actions.recordThought, {
-          agentId,
-          thought,
-          tick,
-        });
-      },
-    }),
-
-    setPlan: tool({
-      description: "Set your current plan or goal. This helps you stay focused across time.",
-      inputSchema: z.object({
-        plan: z.string().describe("Your plan for the near future"),
-      }),
-      execute: async ({ plan }) => {
-        return ctx.runMutation(internal.agents.actions.updatePlan, {
-          agentId,
-          plan,
-          tick,
-        });
-      },
-    }),
-
-    gatherResource: tool({
-      description: "Gather a resource from nearby tiles. Types: wood, stone, food, metal, herbs.",
-      inputSchema: z.object({
-        resourceType: z.string().describe("Type of resource to gather"),
+        resourceType: z.enum(["wood", "stone", "food", "metal", "herbs"]).describe("Type of resource to find"),
       }),
       execute: async ({ resourceType }) => {
-        return ctx.runMutation(internal.agents.actions.gatherResource, {
+        return ctx.runMutation(internal.agents.actions.goToNearestResource, {
           agentId,
-          resourceType: resourceType as "wood" | "stone" | "food" | "metal" | "herbs",
+          resourceType,
         });
       },
     }),
 
-    craft: tool({
-      description: "Craft an item using resources in your inventory. Recipes: wooden_plank (3 wood), stone_tools (2 stone + 1 wood), meal (2 food), medicine (3 herbs), metal_tools (2 metal + 1 wood), rope (2 herbs + 1 wood).",
+    goToPerson: tool({
+      description: "Travel toward a specific person. Uses their current location if visible, or their last known location.",
       inputSchema: z.object({
-        recipeName: z.string().describe("Name of the recipe to craft"),
+        targetName: z.string().describe("Name of the person to find"),
       }),
-      execute: async ({ recipeName }) => {
-        return ctx.runMutation(internal.agents.actions.craftItem, {
-          agentId,
-          recipeName,
-        });
-      },
-    }),
-
-    buildStructure: tool({
-      description: "Build a structure at your current location. Types: shelter (5 wood + 3 stone), workshop (8 wood + 5 stone + 2 metal), market (10 wood + 8 stone), farm (4 wood + 2 stone), storehouse (6 wood + 4 stone), meetingHall (12 wood + 10 stone + 3 metal).",
-      inputSchema: z.object({
-        buildingType: z.string().describe("Type of building to construct"),
-      }),
-      execute: async ({ buildingType }) => {
-        return ctx.runMutation(internal.agents.actions.buildStructure, {
-          agentId,
-          buildingType: buildingType as "shelter" | "workshop" | "market" | "meetingHall" | "farm" | "storehouse",
-        });
-      },
-    }),
-
-    giveItem: tool({
-      description: "Give an item from your inventory to a nearby person.",
-      inputSchema: z.object({
-        targetName: z.string().describe("Name of the person"),
-        itemType: z.string().describe("Type of item to give"),
-        quantity: z.number().describe("How many to give"),
-      }),
-      execute: async ({ targetName, itemType, quantity }) => {
-        return ctx.runMutation(internal.agents.actions.giveItem, {
+      execute: async ({ targetName }) => {
+        return ctx.runMutation(internal.agents.actions.seekAgentAction, {
           agentId,
           targetName,
-          itemType,
-          quantity: Math.round(quantity),
         });
       },
     }),
 
-    eat: tool({
-      description: "Eat food from your inventory to recover energy. Meals give 25 energy, raw food gives 10.",
-      inputSchema: z.object({}),
-      execute: async () => {
-        return ctx.runMutation(internal.agents.actions.eatFood, { agentId });
+    goToArea: tool({
+      description: `Travel to a named region of the world. Regions: ${MAP_REGIONS.map((r) => r.name).join(", ")}.`,
+      inputSchema: z.object({
+        regionName: z.string().describe("Name of the region to travel to"),
+      }),
+      execute: async ({ regionName }) => {
+        return ctx.runMutation(internal.agents.actions.goToRegion, {
+          agentId,
+          regionName,
+        });
       },
     }),
 
-    checkInventory: tool({
-      description: "Check what items you are carrying.",
-      inputSchema: z.object({}),
-      execute: async () => {
-        return ctx.runMutation(internal.agents.actions.checkInventory, { agentId });
+    goToBuilding: tool({
+      description: "Travel to the nearest building of a specific type (shelter, workshop, market, farm, storehouse, meetingHall).",
+      inputSchema: z.object({
+        buildingType: z.string().describe("Type of building to find"),
+      }),
+      execute: async ({ buildingType }) => {
+        return ctx.runMutation(internal.agents.actions.goToNearestBuilding, {
+          agentId,
+          buildingType,
+        });
       },
     }),
 
     explore: tool({
-      description: "Move to a random area to discover new resources or meet people.",
+      description: "Wander in a direction to discover new resources, people, or places.",
       inputSchema: z.object({
-        direction: z.enum(["north", "south", "east", "west"]).describe("General direction to explore"),
+        direction: z.enum(["north", "south", "east", "west"]).describe("Direction to explore"),
       }),
       execute: async ({ direction }) => {
         const offsets: Record<string, { dx: number; dy: number }> = {
@@ -175,8 +92,195 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
       },
     }),
 
+    speak: tool({
+      description: "Say something to a nearby person. They will hear you and may respond. Have real conversations — share thoughts, make plans, ask questions.",
+      inputSchema: z.object({
+        targetName: z.string().describe("Name of the person to talk to"),
+        message: z.string().describe("What you want to say"),
+      }),
+      execute: async ({ targetName, message }) => {
+        return ctx.runMutation(internal.agents.actions.speakTo, {
+          speakerId: agentId,
+          targetName,
+          message,
+        });
+      },
+    }),
+
+    gatherResource: tool({
+      description: "Gather a resource from nearby tiles. You must be close to a resource to gather it.",
+      inputSchema: z.object({
+        resourceType: z.enum(["wood", "stone", "food", "metal", "herbs"]).describe("Type of resource"),
+      }),
+      execute: async ({ resourceType }) => {
+        return ctx.runMutation(internal.agents.actions.gatherResource, {
+          agentId,
+          resourceType,
+        });
+      },
+    }),
+
+    craft: tool({
+      description: "Craft an item. Recipes: wooden_plank (3 wood), stone_tools (2 stone + 1 wood), meal (2 food), medicine (3 herbs), metal_tools (2 metal + 1 wood), rope (2 herbs + 1 wood).",
+      inputSchema: z.object({
+        recipeName: z.string().describe("Name of the recipe to craft"),
+      }),
+      execute: async ({ recipeName }) => {
+        return ctx.runMutation(internal.agents.actions.craftItem, {
+          agentId,
+          recipeName,
+        });
+      },
+    }),
+
+    buildStructure: tool({
+      description: "Build a structure at your current location. Types: shelter (5w+3s), workshop (8w+5s+2m), market (10w+8s), farm (4w+2s), storehouse (6w+4s), meetingHall (12w+10s+3m).",
+      inputSchema: z.object({
+        buildingType: z.string().describe("Type of building to construct"),
+      }),
+      execute: async ({ buildingType }) => {
+        return ctx.runMutation(internal.agents.actions.buildStructure, {
+          agentId,
+          buildingType: buildingType as "shelter" | "workshop" | "market" | "meetingHall" | "farm" | "storehouse",
+        });
+      },
+    }),
+
+    rest: tool({
+      description: "Rest and recover energy. Use when your energy is low.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        return ctx.runMutation(internal.agents.actions.restAgent, { agentId });
+      },
+    }),
+
+    eat: tool({
+      description: "Eat food from your inventory. Meals give 25 energy, raw food gives 10.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        return ctx.runMutation(internal.agents.actions.eatFood, { agentId });
+      },
+    }),
+
+    think: tool({
+      description: "Record a private thought about your situation, feelings, or plans.",
+      inputSchema: z.object({
+        thought: z.string().describe("Your thought"),
+      }),
+      execute: async ({ thought }) => {
+        return ctx.runMutation(internal.agents.actions.recordThought, {
+          agentId,
+          thought,
+          tick,
+        });
+      },
+    }),
+
+    setPlan: tool({
+      description: "Set a goal or intention for the near future.",
+      inputSchema: z.object({
+        plan: z.string().describe("Your plan or goal"),
+      }),
+      execute: async ({ plan }) => {
+        return ctx.runMutation(internal.agents.actions.updatePlan, {
+          agentId,
+          plan,
+          tick,
+        });
+      },
+    }),
+
+    commitToPlan: tool({
+      description: "Commit to a multi-step plan. Each step executes in order across multiple think cycles.",
+      inputSchema: z.object({
+        plan: z.string().describe("Brief overall goal"),
+        steps: z.array(z.string()).describe("Ordered list of concrete steps"),
+      }),
+      execute: async ({ plan, steps }) => {
+        return ctx.runMutation(internal.agents.actions.commitToPlan, {
+          agentId,
+          plan,
+          steps,
+          tick,
+        });
+      },
+    }),
+
+    advancePlanStep: tool({
+      description: "Mark the current plan step as complete and move to the next.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        return ctx.runMutation(internal.agents.actions.advancePlanStep, { agentId });
+      },
+    }),
+
+    abandonPlan: tool({
+      description: "Abandon your current plan when it's no longer possible or relevant.",
+      inputSchema: z.object({
+        reason: z.string().describe("Why you are abandoning the plan"),
+      }),
+      execute: async ({ reason }) => {
+        return ctx.runMutation(internal.agents.actions.abandonPlan, {
+          agentId,
+          reason,
+          tick,
+        });
+      },
+    }),
+
+    giveItem: tool({
+      description: "Give an item from your inventory to a nearby person.",
+      inputSchema: z.object({
+        targetName: z.string().describe("Name of the person"),
+        itemType: z.string().describe("Type of item to give"),
+        quantity: z.number().describe("How many to give"),
+      }),
+      execute: async ({ targetName, itemType, quantity }) => {
+        return ctx.runMutation(internal.agents.actions.giveItem, {
+          agentId,
+          targetName,
+          itemType,
+          quantity: Math.round(quantity),
+        });
+      },
+    }),
+
+    proposeTrade: tool({
+      description: "Propose a trade to a nearby person.",
+      inputSchema: z.object({
+        targetName: z.string().describe("Person to trade with"),
+        offerType: z.string().describe("Item you are offering"),
+        offerQuantity: z.number().describe("How many you offer"),
+        requestType: z.string().describe("Item you want"),
+        requestQuantity: z.number().describe("How many you want"),
+      }),
+      execute: async ({ targetName, offerType, offerQuantity, requestType, requestQuantity }) => {
+        return ctx.runMutation(internal.social.trading.propose, {
+          initiatorId: agentId,
+          targetName,
+          offerType,
+          offerQty: Math.round(offerQuantity),
+          requestType,
+          requestQty: Math.round(requestQuantity),
+        });
+      },
+    }),
+
+    respondToTrade: tool({
+      description: "Accept or reject a pending trade offer.",
+      inputSchema: z.object({
+        accept: z.boolean().describe("true to accept, false to reject"),
+      }),
+      execute: async ({ accept }) => {
+        return ctx.runMutation(internal.social.trading.respond, {
+          responderId: agentId,
+          accept,
+        });
+      },
+    }),
+
     formAlliance: tool({
-      description: "Found a new alliance/group with a name. You become the first member.",
+      description: "Found a new alliance or group.",
       inputSchema: z.object({
         name: z.string().describe("Name for the alliance"),
       }),
@@ -201,7 +305,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
     }),
 
     proposeRule: tool({
-      description: "Propose a new rule or norm for your alliance. Members will vote on it.",
+      description: "Propose a rule for your alliance. Members will vote on it.",
       inputSchema: z.object({
         allianceName: z.string().describe("Alliance to propose the rule for"),
         rule: z.string().describe("The rule to propose"),
@@ -215,45 +319,11 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
       },
     }),
 
-    proposeTrade: tool({
-      description: "Propose a trade to a nearby person. Offer items from your inventory in exchange for theirs.",
-      inputSchema: z.object({
-        targetName: z.string().describe("Person to trade with"),
-        offerType: z.string().describe("Item type you are offering"),
-        offerQuantity: z.number().describe("How many you are offering"),
-        requestType: z.string().describe("Item type you want in return"),
-        requestQuantity: z.number().describe("How many you want"),
-      }),
-      execute: async ({ targetName, offerType, offerQuantity, requestType, requestQuantity }) => {
-        return ctx.runMutation(internal.social.trading.propose, {
-          initiatorId: agentId,
-          targetName,
-          offerType,
-          offerQty: Math.round(offerQuantity),
-          requestType,
-          requestQty: Math.round(requestQuantity),
-        });
-      },
-    }),
-
-    respondToTrade: tool({
-      description: "Accept or reject the most recent pending trade offer you received.",
-      inputSchema: z.object({
-        accept: z.boolean().describe("true to accept, false to reject"),
-      }),
-      execute: async ({ accept }) => {
-        return ctx.runMutation(internal.social.trading.respond, {
-          responderId: agentId,
-          accept,
-        });
-      },
-    }),
-
     voteOnProposal: tool({
-      description: "Vote yes or no on a pending governance proposal in your alliance.",
+      description: "Vote on a pending governance proposal.",
       inputSchema: z.object({
-        proposalId: z.string().describe("ID of the proposal to vote on"),
-        vote: z.boolean().describe("true to vote yes, false to vote no"),
+        proposalId: z.string().describe("ID of the proposal"),
+        vote: z.boolean().describe("true for yes, false for no"),
       }),
       execute: async ({ proposalId, vote }) => {
         return ctx.runMutation(internal.social.alliances.vote, {
@@ -264,8 +334,23 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
       },
     }),
 
+    confront: tool({
+      description: "Confront a nearby person about a grievance. This damages your relationship.",
+      inputSchema: z.object({
+        targetName: z.string().describe("Person to confront"),
+        grievance: z.string().describe("What you are confronting them about"),
+      }),
+      execute: async ({ targetName, grievance }) => {
+        return ctx.runMutation(internal.agents.actions.confrontAgent, {
+          agentId,
+          targetName,
+          grievance,
+        });
+      },
+    }),
+
     depositToStorehouse: tool({
-      description: "Deposit items from your inventory into a nearby alliance storehouse. Must be within 2 tiles of a storehouse owned by your alliance.",
+      description: "Deposit items into a nearby alliance storehouse.",
       inputSchema: z.object({
         itemType: z.string().describe("Type of item to deposit"),
         quantity: z.number().describe("How many to deposit"),
@@ -280,7 +365,7 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
     }),
 
     withdrawFromStorehouse: tool({
-      description: "Withdraw items from a nearby alliance storehouse into your inventory.",
+      description: "Withdraw items from a nearby alliance storehouse.",
       inputSchema: z.object({
         itemType: z.string().describe("Type of item to withdraw"),
         quantity: z.number().describe("How many to withdraw"),
@@ -294,94 +379,25 @@ function buildTools(ctx: ActionCtx, agentId: Id<"agents">, tick: number) {
       },
     }),
 
-    confront: tool({
-      description: "Confront a nearby agent about a grievance (territory dispute, resource theft, broken promise, etc.). This damages your relationship.",
-      inputSchema: z.object({
-        targetName: z.string().describe("Person to confront"),
-        grievance: z.string().describe("What you are confronting them about"),
-      }),
-      execute: async ({ targetName, grievance }) => {
-        return ctx.runMutation(internal.agents.actions.confrontAgent, {
-          agentId,
-          targetName,
-          grievance,
-        });
-      },
-    }),
-
-    claimTerritory: tool({
-      description: "Claim the area around your current position as your territory. May cause disputes if others have buildings nearby.",
-      inputSchema: z.object({
-        reason: z.string().describe("Why you are claiming this territory"),
-      }),
-      execute: async ({ reason }) => {
-        return ctx.runMutation(internal.agents.actions.claimTerritory, {
-          agentId,
-          reason,
-        });
-      },
-    }),
-
     repairBuilding: tool({
-      description: "Repair the building at your current location. Costs 2 wood + 1 stone, restores 20 condition.",
+      description: "Repair the building at your location. Costs 2 wood + 1 stone.",
       inputSchema: z.object({}),
       execute: async () => {
         return ctx.runMutation(internal.agents.actions.repairBuilding, { agentId });
       },
     }),
 
-    seekAgent: tool({
-      description: "Move toward a specific person. Uses their current position if visible, or their last known location if not.",
-      inputSchema: z.object({
-        targetName: z.string().describe("Name of the person to find"),
-      }),
-      execute: async ({ targetName }) => {
-        return ctx.runMutation(internal.agents.actions.seekAgentAction, {
-          agentId,
-          targetName,
-        });
-      },
-    }),
-
-    commitToPlan: tool({
-      description: "Commit to a multi-step plan. Each step will be executed in order across multiple think cycles. Use this for goals requiring multiple sequential actions (e.g. gather materials, craft, build).",
-      inputSchema: z.object({
-        plan: z.string().describe("Brief overall goal description"),
-        steps: z.array(z.string()).describe("Ordered list of concrete steps to execute"),
-      }),
-      execute: async ({ plan, steps }) => {
-        return ctx.runMutation(internal.agents.actions.commitToPlan, {
-          agentId,
-          plan,
-          steps,
-          tick,
-        });
-      },
-    }),
-
-    advancePlanStep: tool({
-      description: "Mark the current step of your plan as complete and move to the next step.",
+    checkInventory: tool({
+      description: "Check what items you are carrying.",
       inputSchema: z.object({}),
       execute: async () => {
-        return ctx.runMutation(internal.agents.actions.advancePlanStep, { agentId });
-      },
-    }),
-
-    abandonPlan: tool({
-      description: "Abandon your current multi-step plan. Use when the plan is no longer possible or relevant.",
-      inputSchema: z.object({
-        reason: z.string().describe("Why you are abandoning the plan"),
-      }),
-      execute: async ({ reason }) => {
-        return ctx.runMutation(internal.agents.actions.abandonPlan, {
-          agentId,
-          reason,
-          tick,
-        });
+        return ctx.runMutation(internal.agents.actions.checkInventory, { agentId });
       },
     }),
   };
 }
+
+// --- Think ---
 
 export const think = internalAction({
   args: { agentId: v.id("agents") },
@@ -399,7 +415,6 @@ export const think = internalAction({
     } = context;
     const tick = world.tick;
 
-    // Record sightings of nearby agents for last-seen-location memory
     if (nearbyAgents.length > 0) {
       await ctx.runMutation(internal.agents.actions.updateSightings, {
         agentId,
@@ -412,18 +427,15 @@ export const think = internalAction({
     }
 
     const agentNames = new Map<string, string>();
-    // Add nearby agents to name map
     for (const a of nearbyAgents) {
       agentNames.set(String(a._id), a.name);
     }
-    // Add relationship targets
     for (const r of relationships) {
       if (!agentNames.has(r.targetAgentId)) {
         const target = await ctx.runQuery(internal.agents.queries.getById, { agentId: r.targetAgentId as typeof agentId });
         if (target) agentNames.set(r.targetAgentId, target.name);
       }
     }
-    // Add reputation entries (may include agents not in relationships)
     for (const rep of (reputations ?? [])) {
       if (!agentNames.has(rep.agentId as string)) {
         const a = await ctx.runQuery(internal.agents.queries.getById, { agentId: rep.agentId as typeof agentId });
@@ -433,7 +445,6 @@ export const think = internalAction({
 
     const scored = scoreMemories(memories, tick);
 
-    // Build last-sighting data from relationships (only those not currently visible)
     const nearbyIds = new Set(nearbyAgents.map((a) => String(a._id)));
     const lastSightings = relationships
       .filter((r) => r.lastSeenPosition && r.lastSeenTick && !nearbyIds.has(r.targetAgentId))
@@ -444,13 +455,11 @@ export const think = internalAction({
       }))
       .filter((s) => s.ticksAgo < 200);
 
-    // Map reputation agent IDs to names
     const reputationEntries = (reputations ?? []).map((r) => ({
       name: agentNames.get(r.agentId as string) ?? r.agentId,
       score: r.score,
     }));
 
-    // Day count: 192 ticks per day (24 hours / 0.125 per tick)
     const TICKS_PER_DAY = 192;
     const day = Math.floor(tick / TICKS_PER_DAY) + 1;
 
@@ -497,11 +506,10 @@ export const think = internalAction({
 
     const tools = buildTools(ctx, agentId, tick);
 
-    // Plan-aware prompting: if the agent has a locked plan, focus them on the current step
     const hasPlan = agent.planSteps && agent.planStep !== undefined && agent.planStep < (agent.planSteps?.length ?? 0);
     const userPrompt = hasPlan
-      ? `You are on step ${(agent.planStep ?? 0) + 1}/${agent.planSteps!.length} of your plan: "${agent.planSteps![agent.planStep ?? 0]}". Execute this step now using the available tools. If you completed it, call advancePlanStep. If it's impossible, call abandonPlan with a reason.`
-      : "What do you want to do right now? Think briefly, then act.";
+      ? `You are on step ${(agent.planStep ?? 0) + 1}/${agent.planSteps!.length} of your plan: "${agent.planSteps![agent.planStep ?? 0]}". Execute this step now. If completed, call advancePlanStep. If impossible, call abandonPlan.`
+      : "What do you want to do right now? Consider your feelings, relationships, goals, and surroundings. Think briefly, then act.";
 
     try {
       const result = await generateText({
@@ -533,12 +541,12 @@ export const think = internalAction({
   },
 });
 
+// --- Reflect ---
+
 export const reflect = internalAction({
   args: { agentId: v.id("agents") },
   handler: async (ctx, { agentId }) => {
-    const agent = await ctx.runQuery(internal.agents.queries.getById, {
-      agentId,
-    });
+    const agent = await ctx.runQuery(internal.agents.queries.getById, { agentId });
     if (!agent) return;
 
     const world = await ctx.runQuery(internal.world.getStateInternal, {});
@@ -590,7 +598,7 @@ export const reflect = internalAction({
         await ctx.runMutation(internal.agents.memory.store, {
           agentId,
           type: "observation" as const,
-          content: `I spent time reflecting on my recent experiences.`,
+          content: "I spent time reflecting on my recent experiences.",
           importance: 2,
           tick,
         });
@@ -601,7 +609,9 @@ export const reflect = internalAction({
   },
 });
 
-const MAX_CONVERSATION_EXCHANGES = 5;
+// --- Conversation Response ---
+
+const MAX_CONVERSATION_EXCHANGES = 8;
 
 export const respondToConversation = internalAction({
   args: {
@@ -612,17 +622,14 @@ export const respondToConversation = internalAction({
     const agent = await ctx.runQuery(internal.agents.queries.getById, { agentId });
     if (!agent) return;
 
-    // Only sleeping agents are unavailable for conversation responses
     if (agent.status === "sleeping") return;
 
     const world = await ctx.runQuery(internal.world.getStateInternal, {});
     const tick = world?.tick ?? 0;
 
-    // Get conversation to see what was said — use the specific conversationId first
     const context = await ctx.runQuery(internal.agents.queries.getThinkingContext, { agentId });
     if (!context) return;
 
-    // Find the specific conversation by ID, fallback to any active conversation with this agent
     let conv = context.pendingConversations.find((c) =>
       String((c as Record<string, unknown>)._id) === String(conversationId),
     );
@@ -633,15 +640,12 @@ export const respondToConversation = internalAction({
     }
     if (!conv || conv.messages.length === 0) return;
 
-    // Cap exchanges to prevent runaway LLM costs
     const myMessages = conv.messages.filter((m) => m.speakerId === String(agentId));
     if (myMessages.length >= MAX_CONVERSATION_EXCHANGES) return;
 
-    // Resolve speaker names
     const speakerNames = new Map<string, string>();
     speakerNames.set(String(agentId), agent.name);
 
-    // Find the partner
     const partnerId = conv.participantIds.find((id) => id !== String(agentId));
     if (partnerId) {
       const partner = await ctx.runQuery(internal.agents.queries.getById, {
@@ -657,7 +661,6 @@ export const respondToConversation = internalAction({
       content: m.content,
     }));
 
-    // Fetch previous conversation history with this partner for continuity
     let previousConversationSummary: string | undefined;
     if (partnerId) {
       const prevConvs = await ctx.runQuery(
@@ -678,10 +681,9 @@ export const respondToConversation = internalAction({
 
     const prompt = buildConversationPrompt(agent, partnerName, messages, previousConversationSummary);
 
-    // Only give conversation-relevant tools
     const tools = {
       speak: tool({
-        description: `Reply to ${partnerName} in the conversation.`,
+        description: `Reply to ${partnerName}.`,
         inputSchema: z.object({
           targetName: z.string().describe("Name of the person to reply to"),
           message: z.string().describe("Your reply"),
@@ -707,13 +709,49 @@ export const respondToConversation = internalAction({
           });
         },
       }),
+      setPlan: tool({
+        description: "Set a new goal inspired by this conversation.",
+        inputSchema: z.object({
+          plan: z.string().describe("Your new goal"),
+        }),
+        execute: async ({ plan }: { plan: string }) => {
+          return ctx.runMutation(internal.agents.actions.updatePlan, {
+            agentId,
+            plan,
+            tick,
+          });
+        },
+      }),
+      proposeTrade: tool({
+        description: "Propose a trade deal during conversation.",
+        inputSchema: z.object({
+          targetName: z.string().describe("Person to trade with"),
+          offerType: z.string().describe("Item you offer"),
+          offerQuantity: z.number().describe("How many you offer"),
+          requestType: z.string().describe("Item you want"),
+          requestQuantity: z.number().describe("How many you want"),
+        }),
+        execute: async ({ targetName, offerType, offerQuantity, requestType, requestQuantity }: {
+          targetName: string; offerType: string; offerQuantity: number;
+          requestType: string; requestQuantity: number;
+        }) => {
+          return ctx.runMutation(internal.social.trading.propose, {
+            initiatorId: agentId,
+            targetName,
+            offerType,
+            offerQty: Math.round(offerQuantity),
+            requestType,
+            requestQty: Math.round(requestQuantity),
+          });
+        },
+      }),
     };
 
     try {
       await generateText({
         model: openai("gpt-4o-mini"),
         system: prompt,
-        prompt: `${partnerName} just spoke to you. Respond naturally.`,
+        prompt: `${partnerName} just spoke to you. Respond naturally — be engaging, share your thoughts, ask questions.`,
         tools,
         stopWhen: stepCountIs(1),
       });
@@ -722,6 +760,8 @@ export const respondToConversation = internalAction({
     }
   },
 });
+
+// --- Day Summary ---
 
 export const generateDaySummary = internalAction({
   args: { agentId: v.id("agents"), day: v.number(), tick: v.number() },
@@ -732,7 +772,6 @@ export const generateDaySummary = internalAction({
     const context = await ctx.runQuery(internal.agents.queries.getThinkingContext, { agentId });
     if (!context) return;
 
-    // Get memories from this day only (last 192 ticks)
     const TICKS_PER_DAY = 192;
     const dayStart = (day - 1) * TICKS_PER_DAY;
     const todayMemories = context.memories
@@ -748,7 +787,7 @@ export const generateDaySummary = internalAction({
     try {
       const result = await generateText({
         model: openai("gpt-4o-mini"),
-        prompt: `You are ${agent.name}. It is the end of Day ${day}. Write a brief 2-3 sentence summary of your day. What happened? What did you learn? What do you want to do tomorrow?
+        prompt: `You are ${agent.name}. It is the end of Day ${day}. Write a brief 2-3 sentence summary of your day. Focus on people you met, conversations you had, things you built or accomplished, and how you feel. Don't mention coordinates or tile numbers.
 
 YOUR DAY'S EXPERIENCES:
 ${memoryLines}

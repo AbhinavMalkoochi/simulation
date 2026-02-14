@@ -6,7 +6,7 @@ import { findPath } from "../engine/pathfinding";
 import { addItem, removeItem, hasItems, getInventory, degradeItem, addItemWithDurability } from "../world/inventory";
 import { findRecipe, BUILDING_COSTS } from "../world/recipes";
 import { updateRelationship } from "../social/relationships";
-import { ENERGY, DURABILITY, BUILDING_BONUS } from "../lib/constants";
+import { ENERGY, DURABILITY, BUILDING_BONUS, MAP_REGIONS, getRegionName } from "../lib/constants";
 import { hasBuildingBonus } from "../world/systems";
 
 export const moveAgent = internalMutation({
@@ -931,5 +931,142 @@ export const abandonPlan = internalMutation({
     });
 
     return "Plan abandoned.";
+  },
+});
+
+// --- Semantic Movement (coordinate-free) ---
+
+export const goToNearestResource = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    resourceType: v.union(
+      v.literal("wood"), v.literal("stone"), v.literal("food"), v.literal("metal"), v.literal("herbs"),
+    ),
+  },
+  handler: async (ctx, { agentId, resourceType }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    const world = await ctx.db.query("worldState").first();
+    if (!world) return "World not found.";
+
+    const resources = await ctx.db.query("resources").collect();
+    const available = resources
+      .filter((r) => r.type === resourceType && r.quantity > 0)
+      .map((r) => ({
+        ...r,
+        dist: Math.abs(r.tileX - agent.position.x) + Math.abs(r.tileY - agent.position.y),
+      }))
+      .sort((a, b) => a.dist - b.dist);
+
+    if (available.length === 0) return `No ${resourceType} found anywhere in the world.`;
+
+    const target = available[0];
+    const mapTiles = generateMap(world.mapSeed, world.mapWidth, world.mapHeight);
+    const path = findPath(agent.position, { x: target.tileX, y: target.tileY }, mapTiles, world.mapWidth, world.mapHeight);
+
+    if (path.length < 2) return `Can't find a path to ${resourceType}.`;
+
+    await ctx.db.patch(agentId, {
+      targetPosition: { x: target.tileX, y: target.tileY },
+      path: path.slice(1),
+      status: "moving",
+    });
+
+    const region = getRegionName(target.tileX, target.tileY);
+    return `Heading toward ${resourceType} in ${region} (${path.length - 1} steps).`;
+  },
+});
+
+export const goToNearestBuilding = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    buildingType: v.string(),
+  },
+  handler: async (ctx, { agentId, buildingType }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    const world = await ctx.db.query("worldState").first();
+    if (!world) return "World not found.";
+
+    const buildings = await ctx.db.query("buildings").collect();
+    const matching = buildings
+      .filter((b) => b.type === buildingType && b.condition > 0)
+      .map((b) => ({
+        ...b,
+        dist: Math.abs(b.posX - agent.position.x) + Math.abs(b.posY - agent.position.y),
+      }))
+      .sort((a, b) => a.dist - b.dist);
+
+    if (matching.length === 0) return `No ${buildingType} found in the world.`;
+
+    const target = matching[0];
+    const mapTiles = generateMap(world.mapSeed, world.mapWidth, world.mapHeight);
+    const path = findPath(agent.position, { x: target.posX, y: target.posY }, mapTiles, world.mapWidth, world.mapHeight);
+
+    if (path.length < 2) return `Can't find a path to the ${buildingType}.`;
+
+    await ctx.db.patch(agentId, {
+      targetPosition: { x: target.posX, y: target.posY },
+      path: path.slice(1),
+      status: "moving",
+    });
+
+    const region = getRegionName(target.posX, target.posY);
+    return `Heading to the ${buildingType} in ${region} (${path.length - 1} steps).`;
+  },
+});
+
+export const goToRegion = internalMutation({
+  args: {
+    agentId: v.id("agents"),
+    regionName: v.string(),
+  },
+  handler: async (ctx, { agentId, regionName }) => {
+    const agent = await ctx.db.get(agentId);
+    if (!agent) return "Agent not found.";
+
+    const world = await ctx.db.query("worldState").first();
+    if (!world) return "World not found.";
+
+    const region = MAP_REGIONS.find(
+      (r) => r.name.toLowerCase() === regionName.toLowerCase(),
+    );
+    if (!region) return `Unknown region: ${regionName}. Known regions: ${MAP_REGIONS.map((r) => r.name).join(", ")}.`;
+
+    const mapTiles = generateMap(world.mapSeed, world.mapWidth, world.mapHeight);
+    const centerX = Math.floor((region.xMin + region.xMax) / 2);
+    const centerY = Math.floor((region.yMin + region.yMax) / 2);
+
+    // Find a walkable tile near the center
+    let targetX = centerX;
+    let targetY = centerY;
+    if (!isWalkable(targetX, targetY, mapTiles, world.mapWidth, world.mapHeight)) {
+      let found = false;
+      for (let r = 1; r <= 5 && !found; r++) {
+        for (let dx = -r; dx <= r && !found; dx++) {
+          for (let dy = -r; dy <= r && !found; dy++) {
+            if (isWalkable(centerX + dx, centerY + dy, mapTiles, world.mapWidth, world.mapHeight)) {
+              targetX = centerX + dx;
+              targetY = centerY + dy;
+              found = true;
+            }
+          }
+        }
+      }
+      if (!found) return `Can't find a walkable spot in ${region.name}.`;
+    }
+
+    const path = findPath(agent.position, { x: targetX, y: targetY }, mapTiles, world.mapWidth, world.mapHeight);
+    if (path.length < 2) return `Can't find a path to ${region.name}.`;
+
+    await ctx.db.patch(agentId, {
+      targetPosition: { x: targetX, y: targetY },
+      path: path.slice(1),
+      status: "moving",
+    });
+
+    return `Heading to ${region.name} (${path.length - 1} steps).`;
   },
 });
