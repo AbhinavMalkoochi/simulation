@@ -488,6 +488,7 @@ export const think = internalAction({
       pendingProposals: myPendingProposals.map((p) => ({
         _id: p._id as string,
         content: p.content,
+        allianceName: myAlliances.find((a) => a._id === p.allianceId)?.name,
       })),
       pendingTrades: pendingTrades.map((t) => ({
         offer: t.offer,

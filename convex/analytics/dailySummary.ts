@@ -144,14 +144,10 @@ export const getDayEvents = internalQuery({
   handler: async (ctx, { startTick, endTick }) => {
     const events = await ctx.db
       .query("worldEvents")
-      .withIndex("by_tick")
-      .order("desc")
-      .take(500);
+      .withIndex("by_tick", (q) => q.gte("tick", startTick).lt("tick", endTick))
+      .collect();
 
-    return events.filter(
-      (e) =>
-        e.tick >= startTick && e.tick < endTick && e.type !== "tick_summary",
-    );
+    return events.filter((e) => e.type !== "tick_summary");
   },
 });
 

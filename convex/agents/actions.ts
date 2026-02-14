@@ -386,11 +386,20 @@ export const buildStructure = internalMutation({
       await removeItem(ctx, agentId, input.type, input.quantity);
     }
 
+    // Link storehouses to the builder's alliance so deposit/withdraw works
+    let buildingAllianceId;
+    if (buildingType === "storehouse") {
+      const alliances = await ctx.db.query("alliances").collect();
+      const myAlliance = alliances.find((a) => a.memberIds.includes(agentId));
+      if (myAlliance) buildingAllianceId = myAlliance._id;
+    }
+
     await ctx.db.insert("buildings", {
       type: buildingType,
       posX: agent.position.x,
       posY: agent.position.y,
       ownerId: agentId,
+      allianceId: buildingAllianceId,
       condition: 100,
       level: 1,
     });
@@ -830,9 +839,9 @@ export const seekAgentAction = internalMutation({
         status: "moving",
       });
       const ticksAgo = relationship.lastSeenTick
-        ? (await ctx.db.query("worldState").first())?.tick ?? 0 - relationship.lastSeenTick
+        ? world.tick - relationship.lastSeenTick
         : "unknown";
-      return `Heading to ${targetName}'s last known location at (${relationship.lastSeenPosition.x}, ${relationship.lastSeenPosition.y}), last seen ${ticksAgo} ticks ago.`;
+      return `Heading to ${targetName}'s last known location, last seen ${ticksAgo} ticks ago.`;
     }
 
     return `You don't know where ${targetName} is. Try exploring to find them.`;
