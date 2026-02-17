@@ -1291,3 +1291,173 @@ export const goToRegion = internalMutation({
     return `Heading to ${region.name} (${path.length - 1} steps).`;
   },
 });
+
+// --- Social Dynamics (gossip, promises, public declarations) ---
+
+export const gossipAbout = internalMutation({
+  args: {
+    speakerId: v.id("agents"),
+    targetName: v.string(),
+    subjectName: v.string(),
+    rumor: v.string(),
+    tick: v.number(),
+  },
+  handler: async (ctx, { speakerId, targetName, subjectName, rumor, tick }): Promise<string> => {
+    const speaker = await ctx.db.get(speakerId);
+    if (!speaker) return "Speaker not found.";
+
+    const allAgents = await ctx.db.query("agents").collect();
+    const target = allAgents.find(
+      (a) =>
+        a.name.toLowerCase() === targetName.toLowerCase() &&
+        Math.abs(a.position.x - speaker.position.x) <= 6 &&
+        Math.abs(a.position.y - speaker.position.y) <= 6,
+    );
+    if (!target) return `${targetName} is not nearby.`;
+
+    const subject = allAgents.find(
+      (a) => a.name.toLowerCase() === subjectName.toLowerCase(),
+    );
+    if (!subject) return `Don't know anyone named ${subjectName}.`;
+
+    // Deliver the message as speech
+    const speakResult = await ctx.runMutation(internal.agents.actions.speakTo, {
+      speakerId,
+      targetName,
+      message: rumor,
+    });
+
+    // Create a gossip memory for the listener about the subject
+    await ctx.db.insert("memories", {
+      agentId: target._id,
+      type: "gossip",
+      content: `${speaker.name} told me about ${subject.name}: "${rumor}"`,
+      importance: 7,
+      tick,
+    });
+
+    // Create a self-memory for the speaker
+    await ctx.db.insert("memories", {
+      agentId: speakerId,
+      type: "gossip",
+      content: `I told ${target.name} about ${subject.name}: "${rumor}"`,
+      importance: 5,
+      tick,
+    });
+
+    return speakResult;
+  },
+});
+
+export const makePromise = internalMutation({
+  args: {
+    speakerId: v.id("agents"),
+    targetName: v.string(),
+    promise: v.string(),
+    message: v.string(),
+    tick: v.number(),
+  },
+  handler: async (ctx, { speakerId, targetName, promise, message, tick }): Promise<string> => {
+    const speaker = await ctx.db.get(speakerId);
+    if (!speaker) return "Speaker not found.";
+
+    const allAgents = await ctx.db.query("agents").collect();
+    const target = allAgents.find(
+      (a) =>
+        a.name.toLowerCase() === targetName.toLowerCase() &&
+        Math.abs(a.position.x - speaker.position.x) <= 6 &&
+        Math.abs(a.position.y - speaker.position.y) <= 6,
+    );
+    if (!target) return `${targetName} is not nearby.`;
+
+    // Deliver the message
+    const speakResult = await ctx.runMutation(internal.agents.actions.speakTo, {
+      speakerId,
+      targetName,
+      message,
+    });
+
+    // High-importance promise memory for the recipient — they will remember and hold you to it
+    await ctx.db.insert("memories", {
+      agentId: target._id,
+      type: "promise",
+      content: `${speaker.name} promised me: "${promise}"`,
+      importance: 9,
+      tick,
+    });
+
+    // Speaker also remembers their promise
+    await ctx.db.insert("memories", {
+      agentId: speakerId,
+      type: "promise",
+      content: `I promised ${target.name}: "${promise}"`,
+      importance: 8,
+      tick,
+    });
+
+    // Boost trust from promise-making
+    await updateRelationship(ctx, target._id, speakerId, 0.08, 0.05, tick);
+
+    return speakResult;
+  },
+});
+
+export const accuseOrPraise = internalMutation({
+  args: {
+    speakerId: v.id("agents"),
+    subjectName: v.string(),
+    sentiment: v.union(v.literal("praise"), v.literal("accusation")),
+    declaration: v.string(),
+    tick: v.number(),
+  },
+  handler: async (ctx, { speakerId, subjectName, sentiment, declaration, tick }) => {
+    const speaker = await ctx.db.get(speakerId);
+    if (!speaker) return "Speaker not found.";
+
+    const allAgents = await ctx.db.query("agents").collect();
+    const subject = allAgents.find(
+      (a) => a.name.toLowerCase() === subjectName.toLowerCase(),
+    );
+    if (!subject) return `Don't know anyone named ${subjectName}.`;
+
+    const eventType = sentiment === "praise" ? "praise" : "conflict";
+    const label = sentiment === "praise" ? "praised" : "accused";
+
+    // Public world event — visible to all
+    await ctx.db.insert("worldEvents", {
+      type: eventType,
+      description: `${speaker.name} publicly ${label} ${subject.name}: "${declaration}"`,
+      involvedAgentIds: [speakerId, subject._id],
+      tick,
+    });
+
+    // Memory for the subject
+    await ctx.db.insert("memories", {
+      agentId: subject._id,
+      type: "social",
+      content: `${speaker.name} publicly ${label} me: "${declaration}"`,
+      importance: 8,
+      tick,
+    });
+
+    // Memory for the speaker
+    await ctx.db.insert("memories", {
+      agentId: speakerId,
+      type: "social",
+      content: `I publicly ${label} ${subject.name}: "${declaration}"`,
+      importance: 6,
+      tick,
+    });
+
+    // Relationship impact
+    if (sentiment === "praise") {
+      await updateRelationship(ctx, speakerId, subject._id, 0.1, 0.12, tick);
+      await updateRelationship(ctx, subject._id, speakerId, 0.12, 0.1, tick);
+    } else {
+      await updateRelationship(ctx, speakerId, subject._id, -0.15, -0.2, tick);
+      await updateRelationship(ctx, subject._id, speakerId, -0.2, -0.15, tick);
+    }
+
+    return `You publicly ${label} ${subject.name}.`;
+  },
+});

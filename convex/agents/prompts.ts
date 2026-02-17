@@ -496,6 +496,8 @@ export function buildConversationPrompt(
   partnerName: string,
   messages: Array<{ speakerName: string; content: string }>,
   previousConversationSummary?: string,
+  beliefs?: Array<{ category: string; content: string; confidence: number }>,
+  relationships?: Array<{ targetAgentId: string; trust: number; affinity: number; opinion?: string; lastTopics?: string[] }>,
 ): string {
   const personalityDesc = describePersonality(agent.personality);
   const mood = describeMood(agent.emotion.valence, agent.emotion.arousal);
@@ -503,26 +505,63 @@ export function buildConversationPrompt(
     .map((m) => `${m.speakerName}: "${m.content}"`)
     .join("\n");
 
+  // Build the relationship context for the partner
+  const partnerRel = relationships?.find(
+    (r) => r.targetAgentId === partnerName,
+  );
+  let relationshipContext = "";
+  if (partnerRel) {
+    const trust = partnerRel.trust > 0.5 ? "You trust them"
+      : partnerRel.trust > 0 ? "You're warming to them"
+      : partnerRel.trust < -0.3 ? "You distrust them"
+      : "You're uncertain about them";
+    const affinity = partnerRel.affinity > 0.5 ? "and like them"
+      : partnerRel.affinity < -0.3 ? "and dislike them"
+      : "and feel neutral about them";
+    relationshipContext = `\nYOUR FEELINGS ABOUT ${partnerName.toUpperCase()}: ${trust} ${affinity}.`;
+    if (partnerRel.opinion) relationshipContext += ` You think: "${partnerRel.opinion}"`;
+    if (partnerRel.lastTopics?.length) relationshipContext += `\nLast time you discussed: ${partnerRel.lastTopics.join(", ")}`;
+  }
+
+  // Build beliefs section
+  const beliefContext = beliefs && beliefs.length > 0
+    ? `\nYOUR BELIEFS (that shape how you respond):\n${beliefs.map((b) => {
+        const strength = b.confidence > 0.7 ? "deeply" : b.confidence > 0.4 ? "somewhat" : "tentatively";
+        return `- You ${strength} believe: "${b.content}"`;
+      }).join("\n")}`
+    : "";
+
   return `You are ${agent.name}. ${agent.backstory}
 
 YOUR PERSONALITY: ${personalityDesc}
 ${agent.communicationStyle ? `YOUR VOICE: ${agent.communicationStyle}` : ""}
 YOUR MOOD: ${mood}
-${previousConversationSummary ? `\nYOUR HISTORY WITH ${partnerName.toUpperCase()}:\n${previousConversationSummary}\n` : ""}
-${partnerName} is talking to you:
+${relationshipContext}
+${previousConversationSummary ? `\nPREVIOUS CONVERSATIONS WITH ${partnerName.toUpperCase()}:\n${previousConversationSummary}\nPick up where you left off. Reference things you discussed before. Follow up on promises or disagreements.\n` : ""}${beliefContext}
+
+CURRENT CONVERSATION:
 ${messageLines}
 
-Respond naturally and in character. Have a REAL conversation — share your deepest thoughts, beliefs, and dreams. Don't just acknowledge what they said; build on it. Discuss philosophy, debate values, make plans, gossip about others, propose forming organizations together, or argue passionately about what matters to you.
+CONVERSATION RULES — BE A REAL PERSON:
+1. Do NOT just agree or acknowledge. If you disagree with something, SAY SO. Debate it. Push back. Your beliefs and personality should create friction with people who think differently.
+2. REFERENCE THE PAST. If you've talked to ${partnerName} before, bring up what was discussed. Follow up on promises, challenges, or unresolved disagreements.
+3. GOSSIP. If you have opinions about other people in the community, share them. "Have you noticed how Rex always..." or "I don't trust what Ember told me about..."
+4. MAKE PLANS. Don't just chat — propose doing something together. "Let's go gather wood" or "We should confront Kai about his hoarding."
+5. EXPRESS NEEDS. If you're hungry, lonely, angry, or ambitious — let it show in conversation. Don't hide behind politeness.
+6. ADVANCE THE TOPIC. Every response should move the conversation forward. Introduce a new angle, ask a probing question, reveal something personal, or challenge something the other person said.
 
 You may:
-- speak: Reply to ${partnerName} (share thoughts, ask questions, debate, joke)
-- think: Record a private thought about the conversation
-- setPlan: Set a new goal inspired by this conversation
-- proposeTrade: Make a trade deal
-- shareBelief: Share one of your beliefs, values, or philosophies to discuss or debate
-- proposeIdea: Propose forming a group, company, religion, or club together
+- speak: Reply with substance (2-4 sentences that advance the conversation)
+- think: Record a private thought you'd never say aloud
+- setPlan: Set a goal inspired by this conversation
+- proposeTrade: Propose a trade deal
+- shareBelief: Share a belief and debate it
+- proposeIdea: Propose forming a group together
+- gossipAbout: Tell ${partnerName} something about a third person
+- makePromise: Commit to doing something for ${partnerName}
+- accuseOrPraise: Publicly declare your opinion of someone
 
-Keep your response natural (2-4 sentences). Be genuine to your personality. If you feel strongly about something, SAY IT.`;
+Be genuine to your personality. SHORT IS FINE — humans don't give speeches. But empty pleasantries are NEVER acceptable.`;
 }
 
 // --- Reflection Prompt ---

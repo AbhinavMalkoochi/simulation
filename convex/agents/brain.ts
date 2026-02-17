@@ -718,7 +718,7 @@ export const reflect = internalAction({
 
 // --- Conversation Response ---
 
-const BASE_CONVERSATION_EXCHANGES = 8;
+const BASE_CONVERSATION_EXCHANGES = 12;
 
 export const respondToConversation = internalAction({
   args: {
@@ -789,7 +789,43 @@ export const respondToConversation = internalAction({
       }
     }
 
-    const prompt = buildConversationPrompt(agent, partnerName, messages, previousConversationSummary);
+    // Fetch beliefs and relationships for richer conversation context
+    const beliefs = context.beliefs?.map((b: { category: string; content: string; confidence: number }) => ({
+      category: b.category,
+      content: b.content,
+      confidence: b.confidence,
+    })) ?? [];
+
+    // Resolve relationship targetAgentIds to names
+    const agentIdToName = new Map<string, string>();
+    agentIdToName.set(String(agentId), agent.name);
+    if (partnerId) agentIdToName.set(partnerId, partnerName);
+    // Also resolve from nearby agents in context
+    for (const na of (context.nearbyAgents ?? [])) {
+      if (na._id) agentIdToName.set(String(na._id), na.name);
+    }
+
+    const relationships = await Promise.all(
+      (context.relationships ?? []).map(async (r: { targetAgentId: string; trust: number; affinity: number; opinion?: string; lastTopics?: string[] }) => {
+        let name = agentIdToName.get(String(r.targetAgentId));
+        if (!name) {
+          const target = await ctx.runQuery(internal.agents.queries.getById, { agentId: r.targetAgentId as typeof agentId });
+          if (target) {
+            name = target.name;
+            agentIdToName.set(String(r.targetAgentId), target.name);
+          }
+        }
+        return {
+          targetAgentId: name ?? String(r.targetAgentId),
+          trust: r.trust,
+          affinity: r.affinity,
+          opinion: r.opinion,
+          lastTopics: r.lastTopics,
+        };
+      })
+    );
+
+    const prompt = buildConversationPrompt(agent, partnerName, messages, previousConversationSummary, beliefs, relationships);
 
     const tools = {
       speak: tool({
@@ -900,6 +936,57 @@ export const respondToConversation = internalAction({
             name,
           });
           return `${speakResult} ${allianceResult}`;
+        },
+      }),
+      gossipAbout: tool({
+        description: "Tell the other person something about a third person — a rumor, observation, warning, or opinion. This creates memories for the listener about the subject.",
+        inputSchema: z.object({
+          targetName: z.string().describe("Person you are talking to"),
+          subjectName: z.string().describe("Person you are gossiping about"),
+          rumor: z.string().describe("What you say about them"),
+        }),
+        execute: async ({ targetName, subjectName, rumor }: { targetName: string; subjectName: string; rumor: string }) => {
+          return ctx.runMutation(internal.agents.actions.gossipAbout, {
+            speakerId: agentId,
+            targetName,
+            subjectName,
+            rumor,
+            tick,
+          });
+        },
+      }),
+      makePromise: tool({
+        description: "Make a promise or commitment to the other person. This is stored as a high-importance memory they will remember and hold you to.",
+        inputSchema: z.object({
+          targetName: z.string().describe("Person you are making a promise to"),
+          promise: z.string().describe("What you promise to do"),
+          message: z.string().describe("How you say it"),
+        }),
+        execute: async ({ targetName, promise, message }: { targetName: string; promise: string; message: string }) => {
+          return ctx.runMutation(internal.agents.actions.makePromise, {
+            speakerId: agentId,
+            targetName,
+            promise,
+            message,
+            tick,
+          });
+        },
+      }),
+      accuseOrPraise: tool({
+        description: "Publicly declare your opinion of someone — praise their virtues or accuse them of wrongdoing. This creates a world event everyone can see.",
+        inputSchema: z.object({
+          subjectName: z.string().describe("Person you are praising or accusing"),
+          sentiment: z.enum(["praise", "accusation"]).describe("Whether positive or negative"),
+          declaration: z.string().describe("Your public statement about them"),
+        }),
+        execute: async ({ subjectName, sentiment, declaration }: { subjectName: string; sentiment: "praise" | "accusation"; declaration: string }) => {
+          return ctx.runMutation(internal.agents.actions.accuseOrPraise, {
+            speakerId: agentId,
+            subjectName,
+            sentiment,
+            declaration,
+            tick,
+          });
         },
       }),
     };
