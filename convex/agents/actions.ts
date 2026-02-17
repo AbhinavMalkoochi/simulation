@@ -651,7 +651,7 @@ export const giveItem = internalMutation({
     if (!target) return `${targetName} is not nearby.`;
 
     const removed = await removeItem(ctx, agentId, itemType, quantity);
-    if (!removed) return `You don't have ${quantity} ${itemType}.`;
+    if (!removed) return `You don't have ${Math.round(quantity)} ${itemType}.`;
 
     await addItem(ctx, target._id, itemType, quantity);
 
@@ -664,19 +664,19 @@ export const giveItem = internalMutation({
     await ctx.db.insert("memories", {
       agentId: target._id,
       type: "observation",
-      content: `${agent.name} gave me ${quantity} ${itemType}.`,
+      content: `${agent.name} gave me ${Math.round(quantity)} ${itemType}.`,
       importance: 6,
       tick,
     });
 
     await ctx.db.insert("worldEvents", {
       type: "gift",
-      description: `${agent.name} gave ${quantity} ${itemType} to ${target.name}.`,
+      description: `${agent.name} gave ${Math.round(quantity)} ${itemType} to ${target.name}.`,
       involvedAgentIds: [agentId, target._id],
       tick,
     });
 
-    return `Gave ${quantity} ${itemType} to ${target.name}.`;
+    return `Gave ${Math.round(quantity)} ${itemType} to ${target.name}.`;
   },
 });
 
@@ -708,7 +708,7 @@ export const checkInventory = internalMutation({
   handler: async (ctx, { agentId }) => {
     const items = await getInventory(ctx, agentId);
     if (items.length === 0) return "Your inventory is empty.";
-    return "Inventory: " + items.map((i) => `${i.quantity} ${i.itemType}`).join(", ") + ".";
+    return "Inventory: " + items.map((i) => `${Math.round(i.quantity)} ${i.itemType}`).join(", ") + ".";
   },
 });
 
@@ -740,7 +740,7 @@ export const depositToStorehouse = internalMutation({
     if (!storehouse) return "No alliance storehouse nearby. Build or go to one.";
 
     const removed = await removeItem(ctx, agentId, itemType, quantity);
-    if (!removed) return `You don't have ${quantity} ${itemType}.`;
+    if (!removed) return `You don't have ${Math.round(quantity)} ${itemType}.`;
 
     const existing = await ctx.db
       .query("buildingInventory")
@@ -759,7 +759,7 @@ export const depositToStorehouse = internalMutation({
       });
     }
 
-    return `Deposited ${quantity} ${itemType} into the storehouse.`;
+    return `Deposited ${Math.round(quantity)} ${itemType} into the storehouse.`;
   },
 });
 
@@ -796,7 +796,7 @@ export const withdrawFromStorehouse = internalMutation({
       .first();
 
     if (!existing || existing.quantity < quantity) {
-      return `Storehouse doesn't have ${quantity} ${itemType}.`;
+      return `Storehouse doesn't have ${Math.round(quantity)} ${itemType}.`;
     }
 
     if (existing.quantity === quantity) {
@@ -806,7 +806,7 @@ export const withdrawFromStorehouse = internalMutation({
     }
 
     await addItem(ctx, agentId, itemType, quantity);
-    return `Withdrew ${quantity} ${itemType} from the storehouse.`;
+    return `Withdrew ${Math.round(quantity)} ${itemType} from the storehouse.`;
   },
 });
 
