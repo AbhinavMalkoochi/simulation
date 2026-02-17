@@ -7,7 +7,7 @@ import {
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { generateText, stepCountIs } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { xai } from "@ai-sdk/xai";
 
 const TICKS_PER_DAY = 192;
 
@@ -116,7 +116,7 @@ HEADLINE: [headline]
 
     try {
       const result = await generateText({
-        model: openai("gpt-4o-mini"),
+        model: xai("grok-3-mini"),
         prompt,
         stopWhen: stepCountIs(1),
       });

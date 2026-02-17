@@ -2,7 +2,7 @@ import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { generateText, stepCountIs } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { xai } from "@ai-sdk/xai";
 import { buildSystemPrompt } from "./agents/prompts";
 import { scoreMemories } from "./agents/memory";
 
@@ -61,7 +61,7 @@ A human observer is interviewing you. Respond in character as ${agent.name}. Be 
 
     try {
       const result = await generateText({
-        model: openai("gpt-4o-mini"),
+        model: xai("grok-3-mini"),
         system: systemPrompt,
         prompt: question,
         stopWhen: stepCountIs(1),

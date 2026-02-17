@@ -2,7 +2,7 @@ import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { generateText, tool, stepCountIs } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { xai } from "@ai-sdk/xai";
 import { z } from "zod";
 import { buildSystemPrompt, buildReflectionPrompt, buildConversationPrompt } from "./prompts";
 import { scoreMemories } from "./memory";
@@ -540,7 +540,7 @@ export const think = internalAction({
 
     try {
       const result = await generateText({
-        model: openai("gpt-4o-mini"),
+        model: xai("grok-3-mini"),
         system: systemPrompt,
         prompt: userPrompt,
         tools,
@@ -621,7 +621,7 @@ export const reflect = internalAction({
 
     try {
       const result = await generateText({
-        model: openai("gpt-4o-mini"),
+        model: xai("grok-3-mini"),
         prompt: buildReflectionPrompt(agent.name, recentMemories, existingBeliefs),
         stopWhen: stepCountIs(1),
       });
@@ -906,7 +906,7 @@ export const respondToConversation = internalAction({
 
     try {
       await generateText({
-        model: openai("gpt-4o-mini"),
+        model: xai("grok-3-mini"),
         system: prompt,
         prompt: `${partnerName} just spoke to you. Respond naturally — be engaging, share your thoughts, ask questions. If you have strong beliefs, share them.`,
         tools,
@@ -943,7 +943,7 @@ export const generateDaySummary = internalAction({
 
     try {
       const result = await generateText({
-        model: openai("gpt-4o-mini"),
+        model: xai("grok-3-mini"),
         prompt: `You are ${agent.name}. It is the end of Day ${day}. Write a brief 2-3 sentence summary of your day. Focus on people you met, conversations you had, things you built or accomplished, and how you feel. Don't mention coordinates or tile numbers.
 
 YOUR DAY'S EXPERIENCES:
