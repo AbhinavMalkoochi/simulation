@@ -50,16 +50,15 @@ export function Sidebar({ selectedAgent, agents, events, worldState, buildingCou
 
   return (
     <aside className="w-80 bg-white border-l border-neutral-200 flex flex-col overflow-hidden">
-      <div className="flex border-b border-neutral-100 shrink-0 px-1">
+      <div className="flex border-b border-neutral-100 shrink-0 overflow-x-auto scrollbar-hide">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 px-1.5 py-2.5 text-[10px] font-medium tracking-wide transition-colors cursor-pointer ${
-              activeTab === tab.id
+            className={`shrink-0 px-3 py-2.5 text-[10px] font-medium tracking-wide transition-colors cursor-pointer ${activeTab === tab.id
                 ? "text-neutral-900 border-b-2 border-neutral-900"
                 : "text-neutral-400 hover:text-neutral-600"
-            }`}
+              }`}
           >
             {tab.label}
           </button>
