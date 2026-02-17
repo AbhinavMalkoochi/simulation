@@ -5,12 +5,20 @@ import type { FunctionReturnType } from "convex/server";
 type DailySummary = NonNullable<FunctionReturnType<typeof api.analytics.dailySummary.getDailySummaries>>[number];
 
 function parseSummary(content: string): { headline: string; body: string } {
-  const headlineMatch = content.match(/^HEADLINE:\s*(.+?)(?:\n|---)/);
-  const headline = headlineMatch?.[1]?.trim() ?? "Daily Summary";
-  const body = content
-    .replace(/^HEADLINE:\s*.+?\n/, "")
-    .replace(/^---+\n?/, "")
+  // Handle various headline formats: "HEADLINE: ...", "**HEADLINE: ...**", etc.
+  const headlineMatch = content.match(/^\*{0,2}HEADLINE:\s*(.+?)\*{0,2}\s*(?:\n|---)/);
+  let headline = headlineMatch?.[1]?.trim() ?? "Daily Summary";
+  // Strip any remaining markdown bold/italic from headline
+  headline = headline.replace(/\*+/g, "").trim();
+
+  let body = content
+    .replace(/^\*{0,2}HEADLINE:\s*.+?\*{0,2}\s*\n?/, "")
+    .replace(/^---+\s*\n?/, "")
     .trim();
+  // Strip markdown bold/italic formatting from body
+  body = body.replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1");
+  // Strip heading markers
+  body = body.replace(/^#{1,4}\s+/gm, "");
   return { headline, body };
 }
 

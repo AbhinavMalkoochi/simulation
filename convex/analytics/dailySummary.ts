@@ -92,27 +92,28 @@ export const generateWorldDaySummary = internalAction({
       .filter(Boolean)
       .join("\n");
 
-    const prompt = `You are a narrator for a wilderness survival simulation where 10 AI agents live together. Write a compelling, human-readable daily summary for Day ${day}.
+    const prompt = `You are a literary narrator chronicling a wilderness survival simulation where 10 people live together. Write a compelling Day ${day} entry.
 
-EVENTS THAT HAPPENED TODAY:
+TODAY'S RAW EVENTS:
 ${eventSummary}
 
-Total events: ${allEvents.length} (${conversations.length} conversations, ${gathers.length} gathers, ${crafts.length} crafts, ${builds.length} builds, ${trades.length} trades, ${gifts.length} gifts, ${allianceEvents.length} alliance events, ${conflicts.length} conflicts)
+Stats: ${allEvents.length} total events (${conversations.length} conversations, ${gathers.length} gathers, ${crafts.length} crafts, ${builds.length} builds, ${trades.length} trades, ${gifts.length} gifts, ${allianceEvents.length} alliance, ${conflicts.length} conflicts)
 
-Write a summary that covers:
-1. HEADLINE: A catchy 5-8 word headline summarizing the day's biggest story
-2. OVERVIEW: 2-3 sentences capturing the day's mood and major developments
-3. POLITICS & ALLIANCES: Any alliance formations, governance votes, or power dynamics (if applicable)
-4. ECONOMY: Resource gathering, trading, and building activity
-5. RELATIONSHIPS: Notable interactions, gifts, conflicts, or shifting dynamics
-6. OUTLOOK: What tomorrow might bring based on today's trends
+WRITING RULES:
+- Write like a novel narrator, NOT a newspaper. No headings, no bold text, no bullet points.
+- Open with one vivid sentence that sets the scene and mood of the day.
+- Focus on the CHARACTERS — what they wanted, what they argued about, who surprised whom, and what tensions simmered beneath the surface.
+- Use specific agent names and weave their actions into a narrative, not a list.
+- Always use whole numbers for quantities (e.g. "3 bundles of wood" not "3.24 units").
+- Show personality through action — don't just say "Nova discussed trading", say what she actually proposed and why it matters.
+- End with a line that hints at what's brewing — unresolved tensions, growing alliances, looming shortages.
+- Write 3-4 flowing paragraphs, 150-200 words total. No filler, no generic optimism.
+- Do NOT start with "Day ${day} dawned" or similar cliches. Start in the middle of the action.
 
-Write in third person as an omniscient narrator. Be specific about agent names and events. Keep it concise but engaging — like a newspaper article, not a log file. Use natural language, not quotes from the agents. Total length: 150-250 words.
-
-Format:
-HEADLINE: [headline]
+FORMAT:
+HEADLINE: [A punchy 4-7 word headline capturing the day's defining moment]
 ---
-[body text with paragraph breaks]`;
+[3-4 paragraphs of flowing narrative prose, no formatting]`;
 
     try {
       const result = await generateText({
