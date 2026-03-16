@@ -118,6 +118,37 @@ function describePersonality(p: Personality): string {
     .join(" ");
 }
 
+function buildPersonalityDrives(p: Personality): string {
+  const drives: string[] = [];
+
+  if (p.openness >= 0.7)
+    drives.push("You are driven to explore new areas, try new things, and form novel ideas. Routine bores you.");
+  else if (p.openness < 0.3)
+    drives.push("You find comfort in routine and known approaches. Stick to what works.");
+
+  if (p.conscientiousness >= 0.7)
+    drives.push("You prefer completing plans step-by-step before starting new ones. You keep your promises.");
+  else if (p.conscientiousness < 0.3)
+    drives.push("You act on impulse and go where the moment takes you. Long plans feel stifling.");
+
+  if (p.extraversion >= 0.7)
+    drives.push("You crave social interaction. Seek people out, start conversations, form groups. Solitude makes you restless.");
+  else if (p.extraversion < 0.3)
+    drives.push("You prefer working alone or with one trusted person. Too much socializing drains you.");
+
+  if (p.agreeableness >= 0.7)
+    drives.push("You prioritize harmony. Give gifts, mediate disputes, help others even at personal cost.");
+  else if (p.agreeableness < 0.3)
+    drives.push("You look out for yourself first. Challenge others when they're wrong. Competition drives you.");
+
+  if (p.neuroticism >= 0.7)
+    drives.push("You worry about what could go wrong. Prepare for the worst. Voice your concerns to others.");
+  else if (p.neuroticism < 0.3)
+    drives.push("You stay calm under pressure. Others look to you for stability in a crisis.");
+
+  return drives.length > 0 ? drives.join("\n") : "";
+}
+
 // --- Mood ---
 
 function describeMood(valence: number, arousal: number): string {
@@ -358,6 +389,7 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
   const { x: px, y: py } = agent.position;
   const region = getRegionName(px, py);
   const personalityDesc = describePersonality(agent.personality);
+  const personalityDrives = buildPersonalityDrives(agent.personality);
   const mood = describeMood(agent.emotion.valence, agent.emotion.arousal);
 
   const memoryLines = memories
@@ -438,6 +470,7 @@ ${agent.backstory}
 
 YOUR PERSONALITY:
 ${personalityDesc}
+${personalityDrives ? `\nWHAT DRIVES YOU:\n${personalityDrives}` : ""}
 ${agent.communicationStyle ? `\nYOUR VOICE:\n${agent.communicationStyle}` : ""}
 ${agent.interests && agent.interests.length > 0 ? `\nYOUR INTERESTS: ${agent.interests.join(", ")}` : ""}
 ${agent.habits && agent.habits.length > 0 ? `\nYOUR HABITS: ${agent.habits.join("; ")}` : ""}
