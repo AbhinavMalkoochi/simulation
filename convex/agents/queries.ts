@@ -112,6 +112,11 @@ export const getThinkingContext = internalQuery({
 
     const settlements = await detectSettlements(ctx);
 
+    const agentNames: Record<string, string> = {};
+    for (const a of allAgents) {
+      agentNames[a._id] = a.name;
+    }
+
     return {
       agent, world, memories, nearbyAgents, pendingConversations, nearbyResources,
       inventory, nearbyBuildings, relationships, myAlliances, myPendingProposals, pendingTrades,
@@ -120,6 +125,7 @@ export const getThinkingContext = internalQuery({
       daySummaries,
       beliefs,
       settlements,
+      agentNames,
     };
   },
 });

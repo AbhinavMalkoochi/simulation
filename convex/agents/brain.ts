@@ -428,22 +428,8 @@ export const think = internalAction({
       });
     }
 
-    const agentNames = new Map<string, string>();
-    for (const a of nearbyAgents) {
-      agentNames.set(String(a._id), a.name);
-    }
-    for (const r of relationships) {
-      if (!agentNames.has(r.targetAgentId)) {
-        const target = await ctx.runQuery(internal.agents.queries.getById, { agentId: r.targetAgentId as typeof agentId });
-        if (target) agentNames.set(r.targetAgentId, target.name);
-      }
-    }
-    for (const rep of (reputations ?? [])) {
-      if (!agentNames.has(rep.agentId as string)) {
-        const a = await ctx.runQuery(internal.agents.queries.getById, { agentId: rep.agentId as typeof agentId });
-        if (a) agentNames.set(rep.agentId as string, a.name);
-      }
-    }
+    const nameMap = context.agentNames ?? {};
+    const agentNames = new Map<string, string>(Object.entries(nameMap));
 
     const scored = scoreMemories(memories, tick);
 
@@ -726,16 +712,13 @@ export const respondToConversation = internalAction({
     conversationId: v.id("conversations"),
   },
   handler: async (ctx, { agentId, conversationId }) => {
-    const agent = await ctx.runQuery(internal.agents.queries.getById, { agentId });
-    if (!agent) return;
+    const context = await ctx.runQuery(internal.agents.queries.getThinkingContext, { agentId });
+    if (!context || !context.world) return;
 
+    const { agent, world } = context;
     if (agent.status === "sleeping") return;
 
-    const world = await ctx.runQuery(internal.world.getStateInternal, {});
-    const tick = world?.tick ?? 0;
-
-    const context = await ctx.runQuery(internal.agents.queries.getThinkingContext, { agentId });
-    if (!context) return;
+    const tick = world.tick;
 
     let conv = context.pendingConversations.find((c) =>
       String((c as Record<string, unknown>)._id) === String(conversationId),
@@ -753,17 +736,11 @@ export const respondToConversation = internalAction({
     const myMessages = conv.messages.filter((m) => m.speakerId === String(agentId));
     if (myMessages.length >= maxExchanges) return;
 
-    const speakerNames = new Map<string, string>();
+    const ctxNames = context.agentNames ?? {};
+    const speakerNames = new Map<string, string>(Object.entries(ctxNames));
     speakerNames.set(String(agentId), agent.name);
 
     const partnerId = conv.participantIds.find((id) => id !== String(agentId));
-    if (partnerId) {
-      const partner = await ctx.runQuery(internal.agents.queries.getById, {
-        agentId: partnerId as typeof agentId,
-      });
-      if (partner) speakerNames.set(partnerId, partner.name);
-    }
-
     const partnerName = partnerId ? (speakerNames.get(partnerId) ?? "Someone") : "Someone";
 
     const messages = conv.messages.map((m) => ({
@@ -796,34 +773,15 @@ export const respondToConversation = internalAction({
       confidence: b.confidence,
     })) ?? [];
 
-    // Resolve relationship targetAgentIds to names
-    const agentIdToName = new Map<string, string>();
-    agentIdToName.set(String(agentId), agent.name);
-    if (partnerId) agentIdToName.set(partnerId, partnerName);
-    // Also resolve from nearby agents in context
-    for (const na of (context.nearbyAgents ?? [])) {
-      if (na._id) agentIdToName.set(String(na._id), na.name);
-    }
-
-    const relationships = await Promise.all(
-      (context.relationships ?? []).map(async (r: { targetAgentId: string; trust: number; affinity: number; opinion?: string; lastTopics?: string[] }) => {
-        let name = agentIdToName.get(String(r.targetAgentId));
-        if (!name) {
-          const target = await ctx.runQuery(internal.agents.queries.getById, { agentId: r.targetAgentId as typeof agentId });
-          if (target) {
-            name = target.name;
-            agentIdToName.set(String(r.targetAgentId), target.name);
-          }
-        }
+    const relationships = (context.relationships ?? []).map((r: { targetAgentId: string; trust: number; affinity: number; opinion?: string; lastTopics?: string[] }) => {
         return {
-          targetAgentId: name ?? String(r.targetAgentId),
+          targetAgentId: speakerNames.get(String(r.targetAgentId)) ?? String(r.targetAgentId),
           trust: r.trust,
           affinity: r.affinity,
           opinion: r.opinion,
           lastTopics: r.lastTopics,
         };
-      })
-    );
+      });
 
     const prompt = buildConversationPrompt(agent, partnerName, messages, previousConversationSummary, beliefs, relationships);
 
