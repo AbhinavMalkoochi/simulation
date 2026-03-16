@@ -461,7 +461,7 @@ export const think = internalAction({
         habits: agent.habits ?? undefined,
         longTermGoal: agent.longTermGoal ?? undefined,
       },
-      memories: scored.slice(0, 12),
+      memories: scored.slice(0, 20),
       nearbyAgents: nearbyAgents.map((a) => ({
         name: a.name,
         position: a.position,
@@ -585,7 +585,7 @@ export const reflect = internalAction({
       { agentId, sinceTick: lastReflectionTick },
     );
 
-    if (importance < 80) return;
+    if (importance < 50) return;
 
     const context = await ctx.runQuery(
       internal.agents.queries.getThinkingContext,

@@ -23,7 +23,7 @@ export const getThinkingContext = internalQuery({
       .query("memories")
       .withIndex("by_agent", (q) => q.eq("agentId", agentId))
       .order("desc")
-      .take(30);
+      .take(50);
 
     const conversations = await ctx.db
       .query("conversations")

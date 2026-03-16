@@ -393,7 +393,7 @@ export function buildSystemPrompt(args: BuildPromptArgs): string {
   const mood = describeMood(agent.emotion.valence, agent.emotion.arousal);
 
   const memoryLines = memories
-    .slice(0, 12)
+    .slice(0, 20)
     .map((m) => `- [${m.type}] ${m.content}`)
     .join("\n");
 
