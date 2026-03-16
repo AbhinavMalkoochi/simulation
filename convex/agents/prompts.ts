@@ -212,19 +212,19 @@ function buildUrgencySection(
 ): string {
   const lines: string[] = [];
 
-  if (energy < 15) {
+  if (energy < 10) {
     lines.push("[CRITICAL] You are starving! Eat food, craft a meal, or rest IMMEDIATELY.");
-  } else if (energy < 30) {
-    lines.push("[WARNING] Your energy is dangerously low. Find food, eat, or rest before anything else.");
-  } else if (energy < 50) {
-    lines.push("Your energy is getting low. Consider eating or resting soon.");
+  } else if (energy < 20) {
+    lines.push("[WARNING] Your energy is low. Find food, eat, or rest before doing anything strenuous.");
+  } else if (energy < 35) {
+    lines.push("Your energy is getting low. Consider eating or resting when convenient.");
   }
 
   const hasFood = inventory.some((i) => i.itemType === "food" || i.itemType === "meal");
   const hasShelter = nearbyBuildings.some((b) => b.type === "shelter");
 
-  if (!hasFood && energy < 60) {
-    lines.push("You have no food. Gathering food should be a priority.");
+  if (!hasFood && energy < 40) {
+    lines.push("You have no food. Gathering some food would be wise.");
   }
   if (!hasShelter) {
     lines.push("You have no shelter nearby. Building one would help with rest and safety.");
