@@ -62,6 +62,92 @@ export const moveAgent = internalMutation({
   },
 });
 
+async function speakToHelper(
+  ctx: MutationCtx,
+  speakerId: Id<"agents">,
+  targetName: string,
+  message: string,
+): Promise<string> {
+  const speaker = await ctx.db.get(speakerId);
+  if (!speaker) return "Speaker not found.";
+
+  const allAgents = await ctx.db.query("agents").collect();
+  const target = allAgents.find(
+    (a) =>
+      a.name.toLowerCase() === targetName.toLowerCase() &&
+      Math.abs(a.position.x - speaker.position.x) <= 6 &&
+      Math.abs(a.position.y - speaker.position.y) <= 6,
+  );
+
+  if (!target) return `${targetName} is not nearby.`;
+
+  const world = await ctx.db.query("worldState").first();
+  const tick = world?.tick ?? 0;
+
+  const existing = await ctx.db.query("conversations").order("desc").take(10);
+  const activeConv = existing.find(
+    (c) =>
+      !c.endTick &&
+      c.participantIds.includes(speakerId) &&
+      c.participantIds.includes(target._id),
+  );
+
+  if (activeConv) {
+    await ctx.db.patch(activeConv._id, {
+      messages: [
+        ...activeConv.messages,
+        { speakerId, content: message, tick },
+      ],
+    });
+  } else {
+    await ctx.db.insert("conversations", {
+      participantIds: [speakerId, target._id],
+      messages: [{ speakerId, content: message, tick }],
+      startTick: tick,
+    });
+  }
+
+  await ctx.db.patch(speakerId, { status: "talking" });
+
+  const isSubstantive = message.length > 40;
+  const trustGain = isSubstantive ? 0.05 : 0.03;
+  const affinityGain = isSubstantive ? 0.07 : 0.05;
+  await updateRelationship(ctx, speakerId, target._id, trustGain, affinityGain, tick);
+  await updateRelationship(ctx, target._id, speakerId, trustGain, affinityGain, tick);
+
+  await ctx.db.insert("memories", {
+    agentId: target._id,
+    type: "conversation",
+    content: `${speaker.name} said to me: "${message}"`,
+    importance: 5,
+    tick,
+  });
+
+  await ctx.db.insert("worldEvents", {
+    type: "conversation",
+    description: `${speaker.name} said to ${target.name}: "${message}"`,
+    involvedAgentIds: [speakerId, target._id],
+    tick,
+  });
+
+  if (target.status !== "sleeping") {
+    let convId = activeConv?._id;
+    if (!convId) {
+      const latestConv = await ctx.db.query("conversations").order("desc").first();
+      convId = latestConv?._id;
+    }
+    if (convId) {
+      const jitterMs = 500 + Math.floor(Math.random() * 1500);
+      await ctx.scheduler.runAfter(jitterMs, internal.agents.brain.respondToConversation, {
+        agentId: target._id,
+        conversationId: convId,
+      });
+    }
+  }
+
+  return `You said "${message}" to ${target.name}.`;
+}
+
 export const speakTo = internalMutation({
   args: {
     speakerId: v.id("agents"),
@@ -69,89 +155,7 @@ export const speakTo = internalMutation({
     message: v.string(),
   },
   handler: async (ctx, { speakerId, targetName, message }) => {
-    const speaker = await ctx.db.get(speakerId);
-    if (!speaker) return "Speaker not found.";
-
-    const allAgents = await ctx.db.query("agents").collect();
-    const target = allAgents.find(
-      (a) =>
-        a.name.toLowerCase() === targetName.toLowerCase() &&
-        Math.abs(a.position.x - speaker.position.x) <= 6 &&
-        Math.abs(a.position.y - speaker.position.y) <= 6,
-    );
-
-    if (!target) return `${targetName} is not nearby.`;
-
-    const world = await ctx.db.query("worldState").first();
-    const tick = world?.tick ?? 0;
-
-    const existing = await ctx.db.query("conversations").order("desc").take(10);
-    const activeConv = existing.find(
-      (c) =>
-        !c.endTick &&
-        c.participantIds.includes(speakerId) &&
-        c.participantIds.includes(target._id),
-    );
-
-    if (activeConv) {
-      await ctx.db.patch(activeConv._id, {
-        messages: [
-          ...activeConv.messages,
-          { speakerId, content: message, tick },
-        ],
-      });
-    } else {
-      await ctx.db.insert("conversations", {
-        participantIds: [speakerId, target._id],
-        messages: [{ speakerId, content: message, tick }],
-        startTick: tick,
-      });
-    }
-
-    await ctx.db.patch(speakerId, { status: "talking" });
-
-    // Conversation quality heuristic: longer, substantive messages build more trust
-    const isSubstantive = message.length > 40;
-    const trustGain = isSubstantive ? 0.05 : 0.03;
-    const affinityGain = isSubstantive ? 0.07 : 0.05;
-    await updateRelationship(ctx, speakerId, target._id, trustGain, affinityGain, tick);
-    await updateRelationship(ctx, target._id, speakerId, trustGain, affinityGain, tick);
-
-    await ctx.db.insert("memories", {
-      agentId: target._id,
-      type: "conversation",
-      content: `${speaker.name} said to me: "${message}"`,
-      importance: 5,
-      tick,
-    });
-
-    await ctx.db.insert("worldEvents", {
-      type: "conversation",
-      description: `${speaker.name} said to ${target.name}: "${message}"`,
-      involvedAgentIds: [speakerId, target._id],
-      tick,
-    });
-
-    // Schedule the target to respond (multi-turn conversation)
-    // Only sleeping agents are truly unavailable — all others can respond
-    if (target.status !== "sleeping") {
-      // Get the actual conversation ID — prefer the active conv we just used/created
-      let convId = activeConv?._id;
-      if (!convId) {
-        // We just inserted a new conversation — fetch the latest one between this pair
-        const latestConv = await ctx.db.query("conversations").order("desc").first();
-        convId = latestConv?._id;
-      }
-      if (convId) {
-        const jitterMs = 500 + Math.floor(Math.random() * 1500);
-        await ctx.scheduler.runAfter(jitterMs, internal.agents.brain.respondToConversation, {
-          agentId: target._id,
-          conversationId: convId,
-        });
-      }
-    }
-
-    return `You said "${message}" to ${target.name}.`;
+    return speakToHelper(ctx, speakerId, targetName, message);
   },
 });
 
@@ -1307,40 +1311,31 @@ export const gossipAbout = internalMutation({
     if (!speaker) return "Speaker not found.";
 
     const allAgents = await ctx.db.query("agents").collect();
-    const target = allAgents.find(
-      (a) =>
-        a.name.toLowerCase() === targetName.toLowerCase() &&
-        Math.abs(a.position.x - speaker.position.x) <= 6 &&
-        Math.abs(a.position.y - speaker.position.y) <= 6,
-    );
-    if (!target) return `${targetName} is not nearby.`;
-
     const subject = allAgents.find(
       (a) => a.name.toLowerCase() === subjectName.toLowerCase(),
     );
     if (!subject) return `Don't know anyone named ${subjectName}.`;
 
-    // Deliver the message as speech
-    const speakResult = await ctx.runMutation(internal.agents.actions.speakTo, {
-      speakerId,
-      targetName,
-      message: rumor,
-    });
+    const speakResult = await speakToHelper(ctx, speakerId, targetName, rumor);
 
-    // Create a gossip memory for the listener about the subject
-    await ctx.db.insert("memories", {
-      agentId: target._id,
-      type: "gossip",
-      content: `${speaker.name} told me about ${subject.name}: "${rumor}"`,
-      importance: 7,
-      tick,
-    });
+    const target = allAgents.find(
+      (a) => a.name.toLowerCase() === targetName.toLowerCase(),
+    );
 
-    // Create a self-memory for the speaker
+    if (target) {
+      await ctx.db.insert("memories", {
+        agentId: target._id,
+        type: "gossip",
+        content: `${speaker.name} told me about ${subject.name}: "${rumor}"`,
+        importance: 7,
+        tick,
+      });
+    }
+
     await ctx.db.insert("memories", {
       agentId: speakerId,
       type: "gossip",
-      content: `I told ${target.name} about ${subject.name}: "${rumor}"`,
+      content: `I told ${targetName} about ${subject.name}: "${rumor}"`,
       importance: 5,
       tick,
     });
@@ -1361,6 +1356,8 @@ export const makePromise = internalMutation({
     const speaker = await ctx.db.get(speakerId);
     if (!speaker) return "Speaker not found.";
 
+    const speakResult = await speakToHelper(ctx, speakerId, targetName, message);
+
     const allAgents = await ctx.db.query("agents").collect();
     const target = allAgents.find(
       (a) =>
@@ -1368,35 +1365,26 @@ export const makePromise = internalMutation({
         Math.abs(a.position.x - speaker.position.x) <= 6 &&
         Math.abs(a.position.y - speaker.position.y) <= 6,
     );
-    if (!target) return `${targetName} is not nearby.`;
 
-    // Deliver the message
-    const speakResult = await ctx.runMutation(internal.agents.actions.speakTo, {
-      speakerId,
-      targetName,
-      message,
-    });
+    if (target) {
+      await ctx.db.insert("memories", {
+        agentId: target._id,
+        type: "promise",
+        content: `${speaker.name} promised me: "${promise}"`,
+        importance: 9,
+        tick,
+      });
 
-    // High-importance promise memory for the recipient — they will remember and hold you to it
-    await ctx.db.insert("memories", {
-      agentId: target._id,
-      type: "promise",
-      content: `${speaker.name} promised me: "${promise}"`,
-      importance: 9,
-      tick,
-    });
+      await ctx.db.insert("memories", {
+        agentId: speakerId,
+        type: "promise",
+        content: `I promised ${target.name}: "${promise}"`,
+        importance: 8,
+        tick,
+      });
 
-    // Speaker also remembers their promise
-    await ctx.db.insert("memories", {
-      agentId: speakerId,
-      type: "promise",
-      content: `I promised ${target.name}: "${promise}"`,
-      importance: 8,
-      tick,
-    });
-
-    // Boost trust from promise-making
-    await updateRelationship(ctx, target._id, speakerId, 0.08, 0.05, tick);
+      await updateRelationship(ctx, target._id, speakerId, 0.08, 0.05, tick);
+    }
 
     return speakResult;
   },
