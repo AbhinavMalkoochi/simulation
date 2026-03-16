@@ -113,7 +113,8 @@ export default defineSchema({
     role: v.optional(v.string()),
   })
     .index("by_agent", ["agentId"])
-    .index("by_pair", ["agentId", "targetAgentId"]),
+    .index("by_pair", ["agentId", "targetAgentId"])
+    .index("by_target", ["targetAgentId"]),
 
   resources: defineTable({
     tileX: v.number(),

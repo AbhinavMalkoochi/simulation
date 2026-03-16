@@ -99,7 +99,7 @@ export async function recalculateReputation(
 ): Promise<void> {
   const incoming = await ctx.db
     .query("relationships")
-    .filter((q) => q.eq(q.field("targetAgentId"), agentId))
+    .withIndex("by_target", (q) => q.eq("targetAgentId", agentId))
     .collect();
 
   if (incoming.length === 0) return;
