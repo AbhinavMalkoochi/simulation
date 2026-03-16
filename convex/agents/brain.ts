@@ -1017,7 +1017,7 @@ export const generateDaySummary = internalAction({
     if (!context) return;
 
     const TICKS_PER_DAY = 192;
-    const dayStart = (day - 1) * TICKS_PER_DAY;
+    const dayStart = day * TICKS_PER_DAY;
     const todayMemories = context.memories
       .filter((m) => m.tick >= dayStart && m.type !== "day_summary")
       .slice(0, 20);

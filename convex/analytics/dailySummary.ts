@@ -14,9 +14,8 @@ const TICKS_PER_DAY = 192;
 export const generateWorldDaySummary = internalAction({
   args: { day: v.number(), tick: v.number() },
   handler: async (ctx, { day, tick }) => {
-    // Fetch all events from this day
-    const dayStartTick = (day - 1) * TICKS_PER_DAY;
-    const dayEndTick = day * TICKS_PER_DAY;
+    const dayStartTick = day * TICKS_PER_DAY;
+    const dayEndTick = (day + 1) * TICKS_PER_DAY;
 
     // Get events via worldState query and filter by tick range
     const allEvents = await ctx.runQuery(
@@ -123,7 +122,7 @@ HEADLINE: [A punchy 4-7 word headline capturing the day's defining moment]
       });
 
       if (result.text) {
-        await ctx.runAction(internal.analytics.dailySummary.storeDaySummary, {
+        await ctx.runMutation(internal.analytics.dailySummary.insertDaySummaryEvent, {
           day,
           content: result.text.slice(0, 2000),
           tick,
@@ -149,27 +148,6 @@ export const getDayEvents = internalQuery({
       .collect();
 
     return events.filter((e) => e.type !== "tick_summary");
-  },
-});
-
-/** Store a day summary as a world event */
-export const storeDaySummary = internalAction({
-  args: {
-    day: v.number(),
-    content: v.string(),
-    tick: v.number(),
-    eventCount: v.number(),
-  },
-  handler: async (ctx, { day, content, tick, eventCount }) => {
-    await ctx.runMutation(
-      internal.analytics.dailySummary.insertDaySummaryEvent,
-      {
-        day,
-        content,
-        tick,
-        eventCount,
-      },
-    );
   },
 });
 
