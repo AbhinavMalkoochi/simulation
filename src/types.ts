@@ -44,15 +44,6 @@ export interface AllianceData {
   readonly memberIds: readonly string[];
 }
 
-export const STATUS_BADGE: Readonly<Record<AgentStatus, string>> = {
-  idle: "bg-slate-600",
-  moving: "bg-emerald-600",
-  talking: "bg-blue-600",
-  working: "bg-amber-600",
-  sleeping: "bg-indigo-600",
-  exploring: "bg-pink-600",
-} as const;
-
 export function agentColorHex(spriteSeed: number): string {
   return `#${AGENT_COLORS[spriteSeed % AGENT_COLORS.length].toString(16).padStart(6, "0")}`;
 }

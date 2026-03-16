@@ -98,5 +98,5 @@ export const BUILDING_COSTS: Record<string, BuildingCost> = {
 };
 
 export function findRecipe(name: string): Recipe | undefined {
-  return RECIPES.find((r) => r.name === name);
+  return RECIPES.find((r) => r.name.toLowerCase() === name.toLowerCase());
 }

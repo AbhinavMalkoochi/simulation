@@ -148,7 +148,6 @@ export class GameWorld {
   private mapHeight = 0;
   private mapSeed = 0;
   private mapTiles: number[] = [];
-  private frameCount = 0;
 
   private onAgentSelect?: (agentId: string) => void;
   private _initialized = false;
@@ -217,7 +216,6 @@ export class GameWorld {
     this.setupControls(this.app.canvas as HTMLCanvasElement);
 
     this.app.ticker.add(() => {
-      this.frameCount++;
       this.animateAgents();
       this.animateSpeechBubbles();
       this.animateTransfers();

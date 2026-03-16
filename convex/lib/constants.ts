@@ -75,7 +75,6 @@ export const BUILDING_BONUS = {
 } as const;
 
 export const BUILDING_DECAY_RATE = 1;
-export const BUILDING_DECAY_INTERVAL = 20;
 
 // --- Perception ---
 
