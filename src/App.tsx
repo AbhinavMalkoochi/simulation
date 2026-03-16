@@ -115,6 +115,7 @@ export function App() {
             worldState={worldState}
             buildingCount={buildings?.length ?? 0}
             allianceCount={alliances?.length ?? 0}
+            alliances={alliances ?? []}
             onAgentSelect={setSelectedAgentId}
           />
         )}

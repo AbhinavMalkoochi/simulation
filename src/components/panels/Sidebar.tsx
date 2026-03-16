@@ -19,6 +19,7 @@ interface SidebarProps {
   worldState: WorldStateDoc | null;
   buildingCount: number;
   allianceCount: number;
+  alliances: Array<{ _id: string; name: string; memberIds: string[]; orgType?: string; ideology?: string; founderId: string; rules: string[] }>;
   onAgentSelect: (agentId: string | null) => void;
 }
 
@@ -34,10 +35,9 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
-export function Sidebar({ selectedAgent, agents, events, worldState, buildingCount, allianceCount, onAgentSelect }: SidebarProps) {
+export function Sidebar({ selectedAgent, agents, events, worldState, buildingCount, allianceCount, alliances, onAgentSelect }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<TabId>("world");
   const relationships = useQuery(api.world.getRelationships);
-  const alliances = useQuery(api.world.getAlliances);
   const economyStats = useQuery(api.analytics.stats.getEconomyStats);
 
   if (selectedAgent) {
