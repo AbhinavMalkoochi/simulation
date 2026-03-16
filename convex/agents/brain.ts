@@ -918,14 +918,14 @@ export const respondToConversation = internalAction({
         },
       }),
       proposeIdea: tool({
-        description: "Propose forming a group, company, religion, club, or any organization with the other person.",
+        description: "Propose forming a group, company, religion, club, or any organization with the other person. They will automatically be invited to join.",
         inputSchema: z.object({
           targetName: z.string().describe("Person to propose to"),
-          ideaType: z.string().describe("Type: alliance, company, religion, club, cult"),
+          ideaType: z.enum(["alliance", "company", "religion", "club", "cult"]).describe("Type of organization"),
           name: z.string().describe("Proposed name for the group"),
           message: z.string().describe("How you pitch this idea"),
         }),
-        execute: async ({ targetName, name, message }: { targetName: string; name: string; message: string }) => {
+        execute: async ({ targetName, ideaType, name, message }) => {
           const speakResult = await ctx.runMutation(internal.agents.actions.speakTo, {
             speakerId: agentId,
             targetName,
@@ -934,8 +934,15 @@ export const respondToConversation = internalAction({
           const allianceResult = await ctx.runMutation(internal.social.alliances.create, {
             founderId: agentId,
             name,
+            orgType: ideaType,
+            ideology: message,
           });
-          return `${speakResult} ${allianceResult}`;
+          const inviteResult = await ctx.runMutation(internal.social.alliances.invite, {
+            inviterId: agentId,
+            targetName,
+            allianceName: name,
+          });
+          return `${speakResult} ${allianceResult} ${inviteResult}`;
         },
       }),
       gossipAbout: tool({
