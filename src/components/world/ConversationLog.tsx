@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { MessageSquare, ChevronDown, ChevronUp } from "lucide-react";
 import { agentColorHex } from "../../types";
 import type { WorldEvent, AgentSpriteData } from "../../types";
@@ -59,24 +59,26 @@ function MessageItem({ msg, speakerColor }: { msg: ParsedConversation; speakerCo
 export function ConversationLog({ events, agents }: ConversationLogProps) {
   const [collapsed, setCollapsed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const agentMap = new Map(agents.map((a) => [a.name, a]));
+  const agentMap = useMemo(() => new Map(agents.map((a) => [a.name, a])), [agents]);
 
-  const conversations: ParsedConversation[] = events
-    .filter((e) => e.type === "conversation")
-    .slice(0, MAX_MESSAGES)
-    .map((e) => {
-      const parsed = parseConversation(e.description);
-      if (!parsed) return null;
-      return {
-        speaker: parsed.speaker,
-        target: parsed.target,
-        message: parsed.message,
-        _id: e._id,
-        tick: e.tick,
-      };
-    })
-    .filter((c): c is ParsedConversation => c !== null)
-    .reverse();
+  const conversations = useMemo<ParsedConversation[]>(() =>
+    events
+      .filter((e) => e.type === "conversation")
+      .slice(0, MAX_MESSAGES)
+      .map((e) => {
+        const parsed = parseConversation(e.description);
+        if (!parsed) return null;
+        return {
+          speaker: parsed.speaker,
+          target: parsed.target,
+          message: parsed.message,
+          _id: e._id,
+          tick: e.tick,
+        };
+      })
+      .filter((c): c is ParsedConversation => c !== null)
+      .reverse(),
+  [events]);
 
   useEffect(() => {
     if (scrollRef.current && !collapsed) {

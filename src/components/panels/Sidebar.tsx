@@ -43,7 +43,7 @@ export function Sidebar({ selectedAgent, agents, events, worldState, buildingCou
   if (selectedAgent) {
     return (
       <aside className="w-80 bg-white border-l border-neutral-200 flex flex-col overflow-hidden">
-        <AgentInspector agent={selectedAgent} onClose={() => onAgentSelect(null)} />
+        <AgentInspector agent={selectedAgent} agents={agents} onClose={() => onAgentSelect(null)} />
       </aside>
     );
   }

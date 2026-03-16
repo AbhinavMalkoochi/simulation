@@ -69,13 +69,25 @@ function deriveArchetype(agent: AgentDoc): string {
   return "Adaptable";
 }
 
-export function AgentInspector({ agent, onClose }: { agent: AgentDoc; onClose: () => void }) {
+interface AgentInspectorProps {
+  agent: AgentDoc;
+  agents: AgentDoc[];
+  onClose: () => void;
+}
+
+export function AgentInspector({ agent, agents, onClose }: AgentInspectorProps) {
   const memories = useQuery(api.agents.getMemories, { agentId: agent._id, limit: 8 });
   const inventory = useQuery(api.world.getInventory, { agentId: agent._id });
   const conversations = useQuery(api.agents.getConversations, { agentId: agent._id });
   const beliefs = useQuery(api.agents.getBeliefs, { agentId: agent._id });
   const reputations = useQuery(api.world.getReputations);
   const relationships = useQuery(api.world.getRelationships);
+
+  const nameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of agents) map.set(a._id, a.name);
+    return map;
+  }, [agents]);
 
   const agentReputation = reputations?.find((r) => r.agentId === agent._id);
 
@@ -201,7 +213,7 @@ export function AgentInspector({ agent, onClose }: { agent: AgentDoc; onClose: (
               return (
                 <div key={r._id} className="flex items-center gap-2 text-[11px]">
                   <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${strength > 0.5 ? "bg-emerald-500" : strength > 0 ? "bg-amber-400" : "bg-red-400"}`} />
-                  <span className="text-neutral-600 flex-1">{r.targetAgentId}</span>
+                  <span className="text-neutral-600 flex-1">{nameMap.get(r.targetAgentId) ?? r.targetAgentId}</span>
                   <span className="text-neutral-400">{label}</span>
                   <span className="text-neutral-300 tabular-nums text-[10px]">T:{r.trust.toFixed(1)} A:{r.affinity.toFixed(1)}</span>
                 </div>
