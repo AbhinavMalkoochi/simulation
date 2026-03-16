@@ -137,8 +137,8 @@ export const run = internalMutation({
           const otherAgents = agents.filter((a) =>
             a._id !== agent._id &&
             a.status !== "sleeping" &&
-            (Math.abs(a.position.x - agent.position.x) > PERCEPTION.AGENT_RANGE ||
-             Math.abs(a.position.y - agent.position.y) > PERCEPTION.AGENT_RANGE),
+            Math.abs(a.position.x - agent.position.x) <= 15 &&
+            Math.abs(a.position.y - agent.position.y) <= 15,
           );
           if (otherAgents.length > 0) {
             const target = otherAgents[Math.floor(rand() * otherAgents.length)];
