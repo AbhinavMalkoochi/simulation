@@ -26,11 +26,22 @@ function valueNoise(x: number, y: number, seed: number, scale: number): number {
   return (n00 * (1 - u) + n10 * u) * (1 - v) + (n01 * (1 - u) + n11 * u) * v;
 }
 
+// Avoid recomputing the same deterministic map within a single V8 isolate.
+// Convex may reuse isolates across invocations, so this cache persists
+// for multiple function calls within the same warm instance.
+let _cachedKey = "";
+let _cachedTiles: TileType[] = [];
+
 export function generateMap(
   seed: number,
   width: number,
   height: number,
 ): TileType[] {
+  const key = `${seed}:${width}:${height}`;
+  if (key === _cachedKey && _cachedTiles.length === width * height) {
+    return _cachedTiles;
+  }
+
   const tiles: TileType[] = new Array(width * height);
 
   for (let y = 0; y < height; y++) {
@@ -57,6 +68,8 @@ export function generateMap(
     }
   }
 
+  _cachedKey = key;
+  _cachedTiles = tiles;
   return tiles;
 }
 
